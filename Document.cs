@@ -7,6 +7,7 @@ namespace JetJot.Models
     {
         private string _title = "Untitled";
         private string _text = "";
+        private int _wordGoal = 1000;
 
         public string Title
         {
@@ -29,6 +30,19 @@ namespace JetJot.Models
                 if (_text != value)
                 {
                     _text = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public int WordGoal
+        {
+            get => _wordGoal;
+            set
+            {
+                if (_wordGoal != value)
+                {
+                    _wordGoal = value;
                     OnPropertyChanged();
                 }
             }

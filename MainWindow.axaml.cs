@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
+using System;
 using System.ComponentModel;
 using System.Collections.Generic;
 using JetJot.Models;
@@ -14,6 +15,9 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+
+        // Set up native menu
+        SetupNativeMenu();
 
         // Create a couple of starter documents
         var doc1 = new Document { Title = "First Document", Text = "Start writing..." };
@@ -38,6 +42,48 @@ public partial class MainWindow : Window
 
         // New document button
         NewDocumentButton.Click += OnNewDocumentClicked;
+
+        // Font size selector
+        FontSizeComboBox.SelectionChanged += OnFontSizeChanged;
+
+        // Set goal button
+        SetGoalButton.Click += OnSetGoalClicked;
+
+        // Update word count initially
+        UpdateWordCount();
+    }
+
+    private void SetupNativeMenu()
+    {
+        var viewMenu = new NativeMenu();
+
+        var toolbarItem = new NativeMenuItem { Header = "Show Toolbar", ToggleType = NativeMenuItemToggleType.CheckBox, IsChecked = true };
+        toolbarItem.Click += (s, e) => { ToolbarPanel.IsVisible = !ToolbarPanel.IsVisible; };
+
+        var sidebarItem = new NativeMenuItem { Header = "Show Manuscript View", ToggleType = NativeMenuItemToggleType.CheckBox, IsChecked = true };
+        sidebarItem.Click += (s, e) => {
+            bool isVisible = !SidebarPanel.IsVisible;
+            SidebarPanel.IsVisible = isVisible;
+            var mainGrid = this.FindControl<Grid>("MainGrid");
+            if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
+            {
+                mainGrid.ColumnDefinitions[0].Width = isVisible ? new GridLength(240) : new GridLength(0);
+            }
+        };
+
+        var footerItem = new NativeMenuItem { Header = "Show Progress Bar", ToggleType = NativeMenuItemToggleType.CheckBox, IsChecked = true };
+        footerItem.Click += (s, e) => { FooterPanel.IsVisible = !FooterPanel.IsVisible; };
+
+        viewMenu.Add(toolbarItem);
+        viewMenu.Add(sidebarItem);
+        viewMenu.Add(footerItem);
+
+        var viewMenuItem = new NativeMenuItem { Header = "VIEW", Menu = viewMenu };
+
+        var mainMenu = new NativeMenu();
+        mainMenu.Add(viewMenuItem);
+
+        NativeMenu.SetMenu(this, mainMenu);
     }
 
     private void OnDocumentSelected(object? sender, SelectionChangedEventArgs e)
@@ -54,6 +100,7 @@ public partial class MainWindow : Window
         if (_activeDocument != null)
         {
             _activeDocument.Text = Editor.Text ?? string.Empty;
+            UpdateWordCount();
         }
     }
 
@@ -186,4 +233,137 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    private void OnFontSizeChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (FontSizeComboBox.SelectedItem is ComboBoxItem item &&
+            item.Content is string sizeText &&
+            int.TryParse(sizeText, out int fontSize))
+        {
+            Editor.FontSize = fontSize;
+        }
+    }
+
+    private void UpdateWordCount()
+    {
+        if (_activeDocument == null)
+        {
+            WordCountText.Text = "0 / 1000 words";
+            WordProgressBar.Maximum = 1000;
+            WordProgressBar.Value = 0;
+            return;
+        }
+
+        // Count words in the current document
+        int wordCount = CountWords(_activeDocument.Text);
+        int goal = _activeDocument.WordGoal;
+
+        // Update UI
+        WordCountText.Text = $"{wordCount} / {goal} words";
+        WordProgressBar.Maximum = goal;
+        WordProgressBar.Value = Math.Min(wordCount, goal);
+    }
+
+    private int CountWords(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return 0;
+
+        // Split by whitespace and count non-empty entries
+        return text.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+    }
+
+    private async void OnSetGoalClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_activeDocument == null)
+            return;
+
+        var dialog = new Window
+        {
+            Title = "Set Word Goal",
+            Width = 350,
+            Height = 140,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
+        };
+
+        var stackPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(20)
+        };
+
+        var label = new TextBlock
+        {
+            Text = "Enter your word count goal:",
+            Margin = new Avalonia.Thickness(0, 0, 0, 10)
+        };
+
+        var textBox = new TextBox
+        {
+            Text = _activeDocument.WordGoal.ToString(),
+            Watermark = "e.g., 1000",
+            Margin = new Avalonia.Thickness(0, 0, 0, 10)
+        };
+
+        var buttonPanel = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
+        };
+
+        var okButton = new Button
+        {
+            Content = "OK",
+            Width = 80,
+            Margin = new Avalonia.Thickness(0, 0, 10, 0)
+        };
+
+        var cancelButton = new Button
+        {
+            Content = "Cancel",
+            Width = 80
+        };
+
+        okButton.Click += (s, args) =>
+        {
+            if (int.TryParse(textBox.Text, out int goal) && goal > 0)
+            {
+                _activeDocument.WordGoal = goal;
+                UpdateWordCount();
+            }
+            dialog.Close();
+        };
+
+        cancelButton.Click += (s, args) => dialog.Close();
+
+        textBox.KeyDown += (s, args) =>
+        {
+            if (args.Key == Key.Enter)
+            {
+                okButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            }
+            else if (args.Key == Key.Escape)
+            {
+                dialog.Close();
+            }
+        };
+
+        buttonPanel.Children.Add(okButton);
+        buttonPanel.Children.Add(cancelButton);
+
+        stackPanel.Children.Add(label);
+        stackPanel.Children.Add(textBox);
+        stackPanel.Children.Add(buttonPanel);
+
+        dialog.Content = stackPanel;
+
+        textBox.AttachedToVisualTree += (s, args) =>
+        {
+            textBox.Focus();
+            textBox.SelectAll();
+        };
+
+        await dialog.ShowDialog(this);
+    }
+
 }
