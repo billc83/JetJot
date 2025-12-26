@@ -1,0 +1,91 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        d:DesignWidth="1000"
+        d:DesignHeight="600"
+        x:Class="JetJot.MainWindow"
+        Title="JetJot"
+        Background="#1E1E1E">
+
+    <Grid RowDefinitions="60,*" ColumnDefinitions="240,*">
+
+        <!-- ========================= -->
+        <!-- Banner -->
+        <!-- ========================= -->
+        <Border Grid.Row="0"
+                Grid.Column="0"
+                Grid.ColumnSpan="2"
+                Background="#2D2D2D"
+                BorderBrush="#3A3A3A"
+                BorderThickness="0,0,0,1"
+                Padding="20,0">
+
+            <TextBlock Text="JetJot"
+                       Foreground="#FFFFFF"
+                       FontSize="24"
+                       FontWeight="SemiBold"
+                       VerticalAlignment="Center"/>
+        </Border>
+
+        <!-- ========================= -->
+        <!-- Sidebar -->
+        <!-- ========================= -->
+        <Border Grid.Row="1"
+                Grid.Column="0"
+                Background="#2A2A2A"
+                BorderBrush="#3A3A3A"
+                BorderThickness="0,0,1,0"
+                Padding="12">
+
+            <StackPanel>
+
+                <TextBlock Text="Manuscript"
+                           Foreground="#FFFFFF"
+                           FontSize="14"
+                           Margin="0,0,0,8"/>
+
+                <ListBox
+                    x:Name="DocumentList"
+                    Background="Transparent"
+                    BorderThickness="0"
+                    Foreground="#EAEAEA">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="Document">
+                            <TextBlock Text="{Binding Title}"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+            </StackPanel>
+        </Border>
+
+        <!-- ========================= -->
+        <!-- Editor Area -->
+        <!-- ========================= -->
+        <Border Grid.Row="1"
+                Grid.Column="1"
+                Padding="40">
+
+            <Border Background="#252525"
+                    CornerRadius="6"
+                    Padding="24">
+
+                <TextBox
+                    x:Name="Editor"
+                    AcceptsReturn="True"
+                    FontSize="16"
+                    LineHeight="24"
+                    FontFamily="Segoe UI"
+                    Background="Transparent"
+                    Foreground="#EAEAEA"
+                    BorderThickness="0"
+                    TextWrapping="Wrap"
+                    CaretBrush="#FFFFFF"/>
+
+            </Border>
+        </Border>
+
+    </Grid>
+</Window>
