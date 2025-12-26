@@ -16,8 +16,18 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
 
-        // Set up native menu
-        SetupNativeMenu();
+        // Make title bar draggable
+        var titleBar = this.FindControl<Border>("TitleBar");
+        if (titleBar != null)
+        {
+            titleBar.PointerPressed += (sender, e) =>
+            {
+                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
+                {
+                    BeginMoveDrag(e);
+                }
+            };
+        }
 
         // Create a couple of starter documents
         var doc1 = new Document { Title = "First Document", Text = "Start writing..." };
@@ -53,37 +63,145 @@ public partial class MainWindow : Window
         UpdateWordCount();
     }
 
-    private void SetupNativeMenu()
+    private void OnToggleToolbar(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var viewMenu = new NativeMenu();
+        ToolbarPanel.IsVisible = !ToolbarPanel.IsVisible;
+        CheckToolbar.IsChecked = ToolbarPanel.IsVisible;
+    }
 
-        var toolbarItem = new NativeMenuItem { Header = "Show Toolbar", ToggleType = NativeMenuItemToggleType.CheckBox, IsChecked = true };
-        toolbarItem.Click += (s, e) => { ToolbarPanel.IsVisible = !ToolbarPanel.IsVisible; };
+    private void OnToggleSidebar(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        bool isVisible = !SidebarPanel.IsVisible;
+        SidebarPanel.IsVisible = isVisible;
+        CheckSidebar.IsChecked = isVisible;
 
-        var sidebarItem = new NativeMenuItem { Header = "Show Manuscript View", ToggleType = NativeMenuItemToggleType.CheckBox, IsChecked = true };
-        sidebarItem.Click += (s, e) => {
-            bool isVisible = !SidebarPanel.IsVisible;
-            SidebarPanel.IsVisible = isVisible;
-            var mainGrid = this.FindControl<Grid>("MainGrid");
-            if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
-            {
-                mainGrid.ColumnDefinitions[0].Width = isVisible ? new GridLength(240) : new GridLength(0);
-            }
+        // Adjust column width: 0 when hidden, 240 when visible
+        var mainGrid = this.FindControl<Grid>("MainGrid");
+        if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
+        {
+            mainGrid.ColumnDefinitions[0].Width = isVisible ? new GridLength(240) : new GridLength(0);
+        }
+    }
+
+    private void OnToggleFooter(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        FooterPanel.IsVisible = !FooterPanel.IsVisible;
+        CheckFooter.IsChecked = FooterPanel.IsVisible;
+    }
+
+    private void OnMinimizeClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
+    private void OnMaximizeClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+
+    private void OnCloseClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void OnNewManuscriptClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        // Clear all documents and start fresh
+        _manuscript.Documents.Clear();
+        _activeDocument = null;
+        Editor.Text = string.Empty;
+    }
+
+    private void OnExitClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Close();
+    }
+
+    private void OnUndoClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Editor.Undo();
+    }
+
+    private void OnRedoClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Editor.Redo();
+    }
+
+    private void OnCutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Editor.Cut();
+    }
+
+    private void OnCopyClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Editor.Copy();
+    }
+
+    private void OnPasteClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        Editor.Paste();
+    }
+
+    private async void OnAboutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var dialog = new Window
+        {
+            Title = "About JetJot",
+            Width = 400,
+            Height = 200,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
         };
 
-        var footerItem = new NativeMenuItem { Header = "Show Progress Bar", ToggleType = NativeMenuItemToggleType.CheckBox, IsChecked = true };
-        footerItem.Click += (s, e) => { FooterPanel.IsVisible = !FooterPanel.IsVisible; };
+        var stackPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(30),
+            Spacing = 15,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
 
-        viewMenu.Add(toolbarItem);
-        viewMenu.Add(sidebarItem);
-        viewMenu.Add(footerItem);
+        var titleText = new TextBlock
+        {
+            Text = "JetJot",
+            FontSize = 28,
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
 
-        var viewMenuItem = new NativeMenuItem { Header = "VIEW", Menu = viewMenu };
+        var taglineText = new TextBlock
+        {
+            Text = "Let Your Creativity Fly",
+            FontSize = 16,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC")),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
 
-        var mainMenu = new NativeMenu();
-        mainMenu.Add(viewMenuItem);
+        var versionText = new TextBlock
+        {
+            Text = "Version 0.05",
+            FontSize = 12,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999")),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
 
-        NativeMenu.SetMenu(this, mainMenu);
+        var okButton = new Button
+        {
+            Content = "OK",
+            Width = 100,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Margin = new Avalonia.Thickness(0, 10, 0, 0)
+        };
+
+        okButton.Click += (s, args) => dialog.Close();
+
+        stackPanel.Children.Add(titleText);
+        stackPanel.Children.Add(taglineText);
+        stackPanel.Children.Add(versionText);
+        stackPanel.Children.Add(okButton);
+
+        dialog.Content = stackPanel;
+
+        await dialog.ShowDialog(this);
     }
 
     private void OnDocumentSelected(object? sender, SelectionChangedEventArgs e)
@@ -231,6 +349,81 @@ public partial class MainWindow : Window
             {
                 _manuscript.Documents.Move(index, index + 1);
             }
+        }
+    }
+
+    private async void OnDeleteMenuClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
+        {
+            var dialog = new Window
+            {
+                Title = "Delete Document",
+                Width = 400,
+                Height = 150,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                CanResize = false
+            };
+
+            var stackPanel = new StackPanel
+            {
+                Margin = new Avalonia.Thickness(20),
+                Spacing = 20
+            };
+
+            var messageText = new TextBlock
+            {
+                Text = $"Are you sure you want to delete '{doc.Title}'?",
+                FontSize = 14,
+                TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            };
+
+            var buttonPanel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal,
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                Spacing = 10
+            };
+
+            var confirmButton = new Button
+            {
+                Content = "Delete",
+                Width = 100,
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D32F2F"))
+            };
+
+            var cancelButton = new Button
+            {
+                Content = "Cancel",
+                Width = 100
+            };
+
+            confirmButton.Click += (s, args) =>
+            {
+                _manuscript.Documents.Remove(doc);
+
+                // If we just deleted the active document, clear the editor
+                if (_activeDocument == doc)
+                {
+                    _activeDocument = null;
+                    Editor.Text = string.Empty;
+                }
+
+                dialog.Close();
+            };
+
+            cancelButton.Click += (s, args) => dialog.Close();
+
+            buttonPanel.Children.Add(confirmButton);
+            buttonPanel.Children.Add(cancelButton);
+
+            stackPanel.Children.Add(messageText);
+            stackPanel.Children.Add(buttonPanel);
+
+            dialog.Content = stackPanel;
+
+            await dialog.ShowDialog(this);
         }
     }
 

@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "MohsGlD4naY=",
+  "dgSpecHash": "EjTYPXVCnwM=",
   "success": true,
-  "projectFilePath": "c:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\JetJot.csproj",
+  "projectFilePath": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\JetJot.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\ROG\\.nuget\\packages\\avalonia\\11.3.9\\avalonia.11.3.9.nupkg.sha512",
     "C:\\Users\\ROG\\.nuget\\packages\\avalonia.angle.windows.natives\\2.1.25547.20250602\\avalonia.angle.windows.natives.2.1.25547.20250602.nupkg.sha512",

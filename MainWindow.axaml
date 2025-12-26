@@ -8,14 +8,113 @@
         d:DesignHeight="600"
         x:Class="JetJot.MainWindow"
         Title="JetJot"
-        Background="#1E1E1E">
+        Background="#1E1E1E"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaChromeHints="NoChrome"
+        ExtendClientAreaTitleBarHeightHint="40">
 
 
-    <Grid x:Name="MainGrid" RowDefinitions="60,*,40">
+    <Grid RowDefinitions="40,60,*,40">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="240"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
+
+        <!-- Custom Title Bar -->
+        <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Background="#2D2D2D">
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <!-- Left: Menu -->
+                <Menu Grid.Column="0" Background="Transparent" VerticalAlignment="Center">
+                    <MenuItem Header="File" Foreground="#FFFFFF">
+                        <MenuItem Header="New Manuscript" Click="OnNewManuscriptClicked"/>
+                        <MenuItem Header="New Document" Click="OnNewDocumentClicked"/>
+                        <Separator/>
+                        <MenuItem Header="Exit" Click="OnExitClicked"/>
+                    </MenuItem>
+                    <MenuItem Header="Edit" Foreground="#FFFFFF">
+                        <MenuItem Header="Undo" Click="OnUndoClicked"/>
+                        <MenuItem Header="Redo" Click="OnRedoClicked"/>
+                        <Separator/>
+                        <MenuItem Header="Cut" Click="OnCutClicked"/>
+                        <MenuItem Header="Copy" Click="OnCopyClicked"/>
+                        <MenuItem Header="Paste" Click="OnPasteClicked"/>
+                    </MenuItem>
+                    <MenuItem Header="View" Foreground="#FFFFFF">
+                        <MenuItem x:Name="MenuShowToolbar" Header="Show Toolbar" Click="OnToggleToolbar">
+                            <MenuItem.Icon>
+                                <CheckBox x:Name="CheckToolbar" IsChecked="True" IsHitTestVisible="False"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="MenuShowSidebar" Header="Show Manuscript View" Click="OnToggleSidebar">
+                            <MenuItem.Icon>
+                                <CheckBox x:Name="CheckSidebar" IsChecked="True" IsHitTestVisible="False"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem x:Name="MenuShowFooter" Header="Show Progress Bar" Click="OnToggleFooter">
+                            <MenuItem.Icon>
+                                <CheckBox x:Name="CheckFooter" IsChecked="True" IsHitTestVisible="False"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </MenuItem>
+                    <MenuItem Header="Help" Foreground="#FFFFFF">
+                        <MenuItem Header="About" Click="OnAboutClicked"/>
+                    </MenuItem>
+                </Menu>
+
+                <!-- Center: Title (draggable area) -->
+                <Border x:Name="TitleBar" Grid.Column="1" Background="Transparent">
+                    <TextBlock Text="JetJot"
+                              Foreground="#CCCCCC"
+                              FontSize="12"
+                              VerticalAlignment="Center"
+                              HorizontalAlignment="Center"
+                              IsHitTestVisible="False"/>
+                </Border>
+
+                <!-- Right: Window Controls -->
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
+                    <Button x:Name="MinimizeButton"
+                            Content="─"
+                            Width="46"
+                            Height="40"
+                            Background="Transparent"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            FontSize="10"
+                            Click="OnMinimizeClick"/>
+                    <Button x:Name="MaximizeButton"
+                            Content="□"
+                            Width="46"
+                            Height="40"
+                            Background="Transparent"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            FontSize="12"
+                            Click="OnMaximizeClick"/>
+                    <Button x:Name="CloseButton"
+                            Content="✕"
+                            Width="46"
+                            Height="40"
+                            Background="Transparent"
+                            Foreground="#FFFFFF"
+                            BorderThickness="0"
+                            FontSize="12"
+                            Click="OnCloseClick">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#E81123"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid x:Name="MainGrid" Grid.Row="1" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="2" RowDefinitions="60,*,40">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="240"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
 
         <!-- ========================= -->
         <!-- Banner -->
@@ -28,7 +127,9 @@
                 BorderThickness="0,0,0,1"
                 Padding="20,0">
 
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center">
                 <Image Source="avares://JetJot/Logo.png"
                        Height="40"
                        Margin="0,0,12,0"
@@ -88,6 +189,8 @@
                                         <Separator/>
                                         <MenuItem Header="Move Up" Click="OnMoveUpClicked"/>
                                         <MenuItem Header="Move Down" Click="OnMoveDownClicked"/>
+                                        <Separator/>
+                                        <MenuItem Header="Delete" Click="OnDeleteMenuClicked"/>
                                     </ContextMenu>
                                 </Border.ContextMenu>
                                 <TextBlock Text="{Binding Title}"
@@ -200,14 +303,21 @@
                         <TextBox
                             x:Name="Editor"
                             AcceptsReturn="True"
+                            AcceptsTab="True"
                             FontSize="16"
-                            LineHeight="24"
                             FontFamily="Segoe UI"
                             Background="Transparent"
                             Foreground="#EAEAEA"
                             BorderThickness="0"
                             TextWrapping="Wrap"
-                            CaretBrush="#FFFFFF"/>
+                            CaretBrush="#FFFFFF">
+                            <TextBox.Styles>
+                                <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                </Style>
+                            </TextBox.Styles>
+                        </TextBox>
                     </Border>
 
                 </Grid>
@@ -262,5 +372,6 @@
             </Grid>
         </Border>
 
+        </Grid>
     </Grid>
 </Window>

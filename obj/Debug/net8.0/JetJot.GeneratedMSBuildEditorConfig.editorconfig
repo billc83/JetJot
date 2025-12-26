@@ -17,14 +17,14 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = JetJot
-build_property.ProjectDir = c:\Users\ROG\Desktop\Programming Projects\JetJot\
+build_property.ProjectDir = C:\Users\ROG\Desktop\Programming Projects\JetJot\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.EffectiveAnalysisLevelStyle = 8.0
 build_property.EnableCodeStyleSeverity = 
 
-[c:/Users/ROG/Desktop/Programming Projects/JetJot/App.axaml]
+[C:/Users/ROG/Desktop/Programming Projects/JetJot/App.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
 
-[c:/Users/ROG/Desktop/Programming Projects/JetJot/MainWindow.axaml]
+[C:/Users/ROG/Desktop/Programming Projects/JetJot/MainWindow.axaml]
 build_metadata.AdditionalFiles.SourceItemGroup = AvaloniaXaml
