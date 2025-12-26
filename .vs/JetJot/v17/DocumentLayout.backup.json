@@ -3,10 +3,6 @@
   "WorkspaceRootPath": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|c:\\users\\rog\\desktop\\programming projects\\jetjot\\mainwindow.axaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|solutionrelative:mainwindow.axaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|c:\\users\\rog\\desktop\\programming projects\\jetjot\\document.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|solutionrelative:document.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
@@ -15,12 +11,16 @@
       "RelativeMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|solutionrelative:mainwindow.axaml||{6D5344A2-2FCD-49DE-A09D-6A14FD1B1224}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|c:\\users\\rog\\desktop\\programming projects\\jetjot\\manuscript.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|solutionrelative:manuscript.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|c:\\users\\rog\\desktop\\programming projects\\jetjot\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|solutionrelative:program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|c:\\users\\rog\\desktop\\programming projects\\jetjot\\mainwindow.axaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|solutionrelative:mainwindow.axaml.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|c:\\users\\rog\\desktop\\programming projects\\jetjot\\manuscript.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{F8B875D5-2D30-48A7-8D4F-D6FD76EB50F7}|JetJot.csproj|solutionrelative:manuscript.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -30,7 +30,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 3,
+          "SelectedChildIndex": 4,
           "Children": [
             {
               "$type": "Bookmark",
@@ -38,20 +38,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
-              "Title": "Manuscript.cs",
-              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Manuscript.cs",
-              "RelativeDocumentMoniker": "Manuscript.cs",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Manuscript.cs",
-              "RelativeToolTip": "Manuscript.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAqAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-25T21:29:08.785Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 1,
               "Title": "MainWindow.axaml",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\MainWindow.axaml",
               "RelativeDocumentMoniker": "MainWindow.axaml",
@@ -63,7 +50,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "MainWindow.axaml.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\MainWindow.axaml.cs",
               "RelativeDocumentMoniker": "MainWindow.axaml.cs",
@@ -71,34 +58,45 @@
               "RelativeToolTip": "MainWindow.axaml.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-12-25T20:32:47.126Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-25T20:32:47.126Z"
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 2,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Program.cs",
               "RelativeDocumentMoniker": "Program.cs",
               "ToolTip": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Program.cs",
               "RelativeToolTip": "Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAA4AAABOAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAcwA4AAABOAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-25T20:45:36.664Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "Document.cs",
               "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Document.cs",
               "RelativeDocumentMoniker": "Document.cs",
-              "ToolTip": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Document.cs",
-              "RelativeToolTip": "Document.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAwAAAABAAAAAAAAAA==",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Document.cs*",
+              "RelativeToolTip": "Document.cs*",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-25T21:02:04.089Z",
               "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Manuscript.cs",
+              "DocumentMoniker": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Manuscript.cs",
+              "RelativeDocumentMoniker": "Manuscript.cs",
+              "ToolTip": "C:\\Users\\ROG\\Desktop\\Programming Projects\\JetJot\\Manuscript.cs",
+              "RelativeToolTip": "Manuscript.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAYAAAAqAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-12-25T21:29:08.785Z"
             }
           ]
         }

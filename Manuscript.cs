@@ -1,8 +1,9 @@
-using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using JetJot.Models;
 
 namespace JetJot;
 
 public class Manuscript
 {
-    public List<Document> Documents { get; } = new();
+    public ObservableCollection<Document> Documents { get; } = new();
 }

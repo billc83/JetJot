@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:models="clr-namespace:JetJot.Models"
         mc:Ignorable="d"
         d:DesignWidth="1000"
         d:DesignHeight="600"
@@ -22,11 +23,17 @@
                 BorderThickness="0,0,0,1"
                 Padding="20,0">
 
-            <TextBlock Text="JetJot"
-                       Foreground="#FFFFFF"
-                       FontSize="24"
-                       FontWeight="SemiBold"
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <Image Source="avares://JetJot/Logo.png"
+                       Height="40"
+                       Margin="0,0,12,0"
                        VerticalAlignment="Center"/>
+                <TextBlock Text="JetJot - Let Your Creativity Fly"
+                           Foreground="#ffffffff"
+                           FontSize="24"
+                           FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
         </Border>
 
         <!-- ========================= -->
@@ -46,14 +53,40 @@
                            FontSize="14"
                            Margin="0,0,0,8"/>
 
+                <Button x:Name="NewDocumentButton"
+                        Content="+ New Document"
+                        Background="#3A3A3A"
+                        Foreground="#FFFFFF"
+                        BorderThickness="0"
+                        Padding="12,8"
+                        Margin="0,0,0,12"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        CornerRadius="4"
+                        Cursor="Hand"/>
+
                 <ListBox
                     x:Name="DocumentList"
                     Background="Transparent"
                     BorderThickness="0"
                     Foreground="#EAEAEA">
                     <ListBox.ItemTemplate>
-                        <DataTemplate DataType="Document">
-                            <TextBlock Text="{Binding Title}"/>
+                        <DataTemplate DataType="models:Document">
+                            <Border Padding="4"
+                                    Background="Transparent"
+                                    CornerRadius="4"
+                                    DoubleTapped="OnDocumentItemDoubleTapped">
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Rename" Click="OnRenameMenuClicked"/>
+                                        <Separator/>
+                                        <MenuItem Header="Move Up" Click="OnMoveUpClicked"/>
+                                        <MenuItem Header="Move Down" Click="OnMoveDownClicked"/>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
+                                <TextBlock Text="{Binding Title}"
+                                           VerticalAlignment="Center"/>
+                            </Border>
                         </DataTemplate>
                     </ListBox.ItemTemplate>
                 </ListBox>
