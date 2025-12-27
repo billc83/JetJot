@@ -170,8 +170,15 @@ public partial class MainWindow : Window
         // New document button
         NewDocumentButton.Click += OnNewDocumentClicked;
 
-        // Font size selector
+        // Font selectors
+        FontFamilyComboBox.SelectionChanged += OnFontFamilyChanged;
         FontSizeComboBox.SelectionChanged += OnFontSizeChanged;
+
+        // Find functionality
+        FindTextBox.KeyDown += OnFindTextBoxKeyDown;
+        FindNextButton.Click += OnFindNextClicked;
+        FindPreviousButton.Click += OnFindPreviousClicked;
+        ClearFindButton.Click += OnClearFindClicked;
 
         // Set goal button
         SetGoalButton.Click += OnSetGoalClicked;
@@ -185,8 +192,35 @@ public partial class MainWindow : Window
         // Load and apply user preferences
         LoadAndApplyPreferences();
 
+        // Global keyboard shortcuts
+        this.KeyDown += OnWindowKeyDown;
+
         // Save on window close
         this.Closing += OnWindowClosing;
+    }
+
+    private void OnWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        // F3 - Find Next
+        if (e.Key == Key.F3)
+        {
+            if (e.KeyModifiers == KeyModifiers.Shift)
+            {
+                FindPrevious();
+            }
+            else
+            {
+                FindNext();
+            }
+            e.Handled = true;
+        }
+        // Ctrl+F - Focus find box
+        else if (e.Key == Key.F && e.KeyModifiers == KeyModifiers.Control)
+        {
+            FindTextBox.Focus();
+            FindTextBox.SelectAll();
+            e.Handled = true;
+        }
     }
 
     private void OnWindowClosing(object? sender, CancelEventArgs e)
@@ -1094,7 +1128,9 @@ public partial class MainWindow : Window
             ShowToolbar = ToolbarPanel.IsVisible,
             ShowSidebar = SidebarPanel.IsVisible,
             ShowFooter = FooterPanel.IsVisible,
-            TypewriterMode = _isTypewriterMode
+            TypewriterMode = _isTypewriterMode,
+            FontFamily = Editor.FontFamily?.ToString() ?? "Segoe UI",
+            FontSize = (int)Editor.FontSize
         };
 
         var dir = System.IO.Path.GetDirectoryName(_preferencesFilePath);
@@ -1136,6 +1172,47 @@ public partial class MainWindow : Window
         {
             CenterCurrentLine();
         }
+
+        // Apply font preferences
+        Editor.FontFamily = new Avalonia.Media.FontFamily(preferences.FontFamily);
+        Editor.FontSize = preferences.FontSize;
+
+        // Update combo boxes to match
+        SetFontFamilyComboBox(preferences.FontFamily);
+        SetFontSizeComboBox(preferences.FontSize);
+    }
+
+    private void SetFontFamilyComboBox(string fontFamily)
+    {
+        for (int i = 0; i < FontFamilyComboBox.Items.Count; i++)
+        {
+            if (FontFamilyComboBox.Items[i] is ComboBoxItem item &&
+                item.Content is string content &&
+                content == fontFamily)
+            {
+                FontFamilyComboBox.SelectedIndex = i;
+                return;
+            }
+        }
+        // Default to first item if not found
+        FontFamilyComboBox.SelectedIndex = 0;
+    }
+
+    private void SetFontSizeComboBox(int fontSize)
+    {
+        for (int i = 0; i < FontSizeComboBox.Items.Count; i++)
+        {
+            if (FontSizeComboBox.Items[i] is ComboBoxItem item &&
+                item.Content is string content &&
+                int.TryParse(content, out int size) &&
+                size == fontSize)
+            {
+                FontSizeComboBox.SelectedIndex = i;
+                return;
+            }
+        }
+        // Default to 16pt (index 2) if not found
+        FontSizeComboBox.SelectedIndex = 2;
     }
 
     private void OnMinimizeClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -1265,7 +1342,7 @@ public partial class MainWindow : Window
         EnsureEditorReadyForCommand();
         if (Clipboard == null) return;
 
-        var clipboardText = await Clipboard.GetTextAsync() ?? string.Empty;
+        var clipboardText = await Avalonia.Input.Platform.ClipboardExtensions.TryGetTextAsync(Clipboard) ?? string.Empty;
         if (!string.IsNullOrEmpty(clipboardText))
         {
             var caretIndex = Editor.CaretIndex;
@@ -1498,6 +1575,21 @@ public partial class MainWindow : Window
         }
     }
 
+    // Removed: Document name is no longer displayed in toolbar
+    // private void UpdateDocumentNameDisplay()
+    // {
+    //     if (_activeDocument != null)
+    //     {
+    //         DocumentNameText.Text = _activeDocument.Title;
+    //         ToolTip.SetTip(DocumentNameText, _activeDocument.Title);
+    //     }
+    //     else
+    //     {
+    //         DocumentNameText.Text = "No Document";
+    //         ToolTip.SetTip(DocumentNameText, null);
+    //     }
+    // }
+
     private void OnEditorTextChanged(object? sender, TextChangedEventArgs e)
     {
         if (_activeDocument != null)
@@ -1726,6 +1818,16 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnFontFamilyChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (FontFamilyComboBox.SelectedItem is ComboBoxItem item &&
+            item.Content is string fontName)
+        {
+            Editor.FontFamily = new Avalonia.Media.FontFamily(fontName);
+            SavePreferences();
+        }
+    }
+
     private void OnFontSizeChanged(object? sender, SelectionChangedEventArgs e)
     {
         if (FontSizeComboBox.SelectedItem is ComboBoxItem item &&
@@ -1733,7 +1835,106 @@ public partial class MainWindow : Window
             int.TryParse(sizeText, out int fontSize))
         {
             Editor.FontSize = fontSize;
+            SavePreferences();
         }
+    }
+
+    private void OnFindTextBoxKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if (e.KeyModifiers == KeyModifiers.Shift)
+            {
+                FindPrevious();
+            }
+            else
+            {
+                FindNext();
+            }
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            ClearFind();
+            Editor.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void OnFindNextClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        FindNext();
+    }
+
+    private void OnFindPreviousClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        FindPrevious();
+    }
+
+    private void OnClearFindClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        ClearFind();
+    }
+
+    private void FindNext()
+    {
+        var searchText = FindTextBox.Text;
+        if (string.IsNullOrEmpty(searchText)) return;
+
+        var editorText = Editor.Text ?? string.Empty;
+        if (string.IsNullOrEmpty(editorText)) return;
+
+        // Start searching from current caret position
+        var startIndex = Editor.CaretIndex;
+        var foundIndex = editorText.IndexOf(searchText, startIndex, StringComparison.OrdinalIgnoreCase);
+
+        // If not found from current position, wrap around to beginning
+        if (foundIndex == -1)
+        {
+            foundIndex = editorText.IndexOf(searchText, 0, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (foundIndex != -1)
+        {
+            Editor.SelectionStart = foundIndex;
+            Editor.SelectionEnd = foundIndex + searchText.Length;
+            Editor.CaretIndex = foundIndex + searchText.Length;
+            Editor.Focus();
+        }
+    }
+
+    private void FindPrevious()
+    {
+        var searchText = FindTextBox.Text;
+        if (string.IsNullOrEmpty(searchText)) return;
+
+        var editorText = Editor.Text ?? string.Empty;
+        if (string.IsNullOrEmpty(editorText)) return;
+
+        // Start searching backwards from current selection start
+        var startIndex = Math.Max(0, Editor.SelectionStart - 1);
+        var foundIndex = editorText.LastIndexOf(searchText, startIndex, StringComparison.OrdinalIgnoreCase);
+
+        // If not found before current position, wrap around to end
+        if (foundIndex == -1)
+        {
+            foundIndex = editorText.LastIndexOf(searchText, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (foundIndex != -1)
+        {
+            Editor.SelectionStart = foundIndex;
+            Editor.SelectionEnd = foundIndex + searchText.Length;
+            Editor.CaretIndex = foundIndex + searchText.Length;
+            Editor.Focus();
+        }
+    }
+
+    private void ClearFind()
+    {
+        FindTextBox.Text = string.Empty;
+        Editor.SelectionStart = Editor.CaretIndex;
+        Editor.SelectionEnd = Editor.CaretIndex;
     }
 
     private void UpdateWordCount()

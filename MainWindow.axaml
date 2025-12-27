@@ -299,66 +299,80 @@
                             BorderThickness="0,0,0,1"
                             Padding="12,8">
 
-                        <Grid ColumnDefinitions="*,Auto">
-                            <!-- Left side: Formatting buttons -->
-                            <StackPanel Grid.Column="0"
-                                       Orientation="Horizontal"
-                                       Spacing="8">
-
-                                <Button Content="B"
-                                        Width="32"
-                                        Height="32"
-                                        FontWeight="Bold"
-                                        ToolTip.Tip="Bold (Coming Soon)"
-                                        IsEnabled="False"
-                                        Background="#3A3A3A"
-                                        Foreground="#888888"/>
-
-                                <Button Content="I"
-                                        Width="32"
-                                        Height="32"
-                                        FontStyle="Italic"
-                                        ToolTip.Tip="Italic (Coming Soon)"
-                                        IsEnabled="False"
-                                        Background="#3A3A3A"
-                                        Foreground="#888888"/>
-
-                                <Separator Width="1" Background="#3A3A3A" Margin="4,0"/>
-
-                                <Button Content="≡"
-                                        Width="32"
-                                        Height="32"
-                                        ToolTip.Tip="Align Left (Coming Soon)"
-                                        IsEnabled="False"
-                                        Background="#3A3A3A"
-                                        Foreground="#888888"/>
-
-                                <Button Content="≡"
-                                        Width="32"
-                                        Height="32"
-                                        ToolTip.Tip="Align Center (Coming Soon)"
-                                        IsEnabled="False"
-                                        Background="#3A3A3A"
-                                        Foreground="#888888"/>
-
-                                <Button Content="≡"
-                                        Width="32"
-                                        Height="32"
-                                        ToolTip.Tip="Align Right (Coming Soon)"
-                                        IsEnabled="False"
-                                        Background="#3A3A3A"
-                                        Foreground="#888888"/>
-                            </StackPanel>
-
-                            <!-- Right side: Font size -->
-                            <StackPanel Grid.Column="1"
-                                       Orientation="Horizontal"
-                                       Spacing="8">
-                                <TextBlock Text="Font Size:"
+                        <StackPanel Orientation="Horizontal"
+                                   Spacing="16"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center">
+                            <!-- Find bar -->
+                            <StackPanel Orientation="Horizontal"
+                                       Spacing="6"
+                                       VerticalAlignment="Center">
+                                <TextBlock Text="🔍"
+                                          FontSize="14"
                                           VerticalAlignment="Center"
                                           Foreground="#CCCCCC"/>
+                                <TextBox x:Name="FindTextBox"
+                                        Width="200"
+                                        Height="28"
+                                        Watermark="Find..."
+                                        Background="#3A3A3A"
+                                        Foreground="#EAEAEA"
+                                        BorderThickness="1"
+                                        BorderBrush="#555555"
+                                        Padding="6,4"
+                                        VerticalContentAlignment="Center"/>
+                                <Button x:Name="FindPreviousButton"
+                                       Content="◄"
+                                       Width="28"
+                                       Height="28"
+                                       Background="#3A3A3A"
+                                       Foreground="#EAEAEA"
+                                       ToolTip.Tip="Previous (Shift+F3)"
+                                       Padding="0"/>
+                                <Button x:Name="FindNextButton"
+                                       Content="►"
+                                       Width="28"
+                                       Height="28"
+                                       Background="#3A3A3A"
+                                       Foreground="#EAEAEA"
+                                       ToolTip.Tip="Next (F3)"
+                                       Padding="0"/>
+                                <Button x:Name="ClearFindButton"
+                                       Content="✕"
+                                       Width="28"
+                                       Height="28"
+                                       Background="#3A3A3A"
+                                       Foreground="#EAEAEA"
+                                       ToolTip.Tip="Clear"
+                                       Padding="0"/>
+                            </StackPanel>
+
+                            <!-- Font controls -->
+                            <StackPanel Orientation="Horizontal"
+                                       Spacing="8"
+                                       VerticalAlignment="Center">
+                                <TextBlock Text="Font:"
+                                          VerticalAlignment="Center"
+                                          Foreground="#CCCCCC"/>
+                                <ComboBox x:Name="FontFamilyComboBox"
+                                         Width="140"
+                                         SelectedIndex="0">
+                                    <ComboBoxItem Content="Segoe UI"/>
+                                    <ComboBoxItem Content="Calibri"/>
+                                    <ComboBoxItem Content="Arial"/>
+                                    <ComboBoxItem Content="Times New Roman"/>
+                                    <ComboBoxItem Content="Georgia"/>
+                                    <ComboBoxItem Content="Courier New"/>
+                                    <ComboBoxItem Content="Consolas"/>
+                                    <ComboBoxItem Content="Verdana"/>
+                                </ComboBox>
+
+                                <TextBlock Text="Size:"
+                                          VerticalAlignment="Center"
+                                          Foreground="#CCCCCC"
+                                          Margin="8,0,0,0"/>
                                 <ComboBox x:Name="FontSizeComboBox"
-                                         Width="80"
+                                         Width="70"
                                          SelectedIndex="2">
                                     <ComboBoxItem Content="12"/>
                                     <ComboBoxItem Content="14"/>
@@ -370,11 +384,11 @@
                                     <ComboBoxItem Content="32"/>
                                 </ComboBox>
                             </StackPanel>
-                        </Grid>
+                        </StackPanel>
                     </Border>
 
                     <!-- Text Editor -->
-                    <Border Grid.Row="1" Padding="0">
+                    <Border Grid.Row="1" Padding="40,20">
                         <TextBox
                             x:Name="Editor"
                             AcceptsReturn="True"

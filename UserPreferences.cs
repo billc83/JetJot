@@ -6,5 +6,7 @@ namespace JetJot.Models
         public bool ShowSidebar { get; set; } = true;
         public bool ShowFooter { get; set; } = true;
         public bool TypewriterMode { get; set; } = false;
+        public string FontFamily { get; set; } = "Segoe UI";
+        public int FontSize { get; set; } = 16;
     }
 }
