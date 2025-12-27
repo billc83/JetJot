@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using System;
 using System.ComponentModel;
 using System.Collections.Generic;
@@ -23,14 +25,55 @@ public partial class MainWindow : Window
         "JetJot",
         "preferences.json");
 
+    // Drag and drop state
+    private Document? _draggedDocument;
+    private Point _dragStartPoint;
+    private bool _isDragging;
+    private int _dropTargetIndex = -1;
+    private bool _isOverTrash = false;
+
+    private static readonly Avalonia.Thickness DropIndicatorTopThickness = new(0, 2, 0, 0);
+    private static readonly Avalonia.Thickness DropIndicatorBottomThickness = new(0, 0, 0, 2);
+    private static readonly Avalonia.Media.IBrush DropIndicatorBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#8B5CA8"));
+
     private int _lastSelectionStart;
     private int _lastSelectionEnd;
     private int _lastCaretIndex;
     private bool _hasSelectionSnapshot;
 
+    // Focus mode state
+    private bool _preFocusModeToolbarVisible = true;
+    private bool _preFocusModeSidebarVisible = true;
+    private bool _preFocusModeFooterVisible = true;
+
+    // Super Focus mode state
+    private bool _isInSuperFocusMode = false;
+    private bool _preSuperFocusModeToolbarVisible = true;
+    private bool _preSuperFocusModeSidebarVisible = true;
+    private bool _preSuperFocusModeFooterVisible = true;
+    private bool _preSuperFocusModeTitleBarVisible = true;
+
+    // Typewriter mode state
+    private bool _isTypewriterMode = false;
+
     public MainWindow()
     {
         InitializeComponent();
+
+        // Add F11 and Escape key handlers for Super Focus Mode
+        this.KeyDown += (sender, e) =>
+        {
+            if (e.Key == Avalonia.Input.Key.F11)
+            {
+                OnToggleSuperFocusMode(null, null!);
+                e.Handled = true;
+            }
+            else if (e.Key == Avalonia.Input.Key.Escape && _isInSuperFocusMode)
+            {
+                OnToggleSuperFocusMode(null, null!);
+                e.Handled = true;
+            }
+        };
 
         // Set default save location - each manuscript in its own folder
         var jetJotRoot = System.IO.Path.Combine(
@@ -694,6 +737,20 @@ public partial class MainWindow : Window
     {
         ToolbarPanel.IsVisible = !ToolbarPanel.IsVisible;
         CheckToolbar.IsChecked = ToolbarPanel.IsVisible;
+
+        // If showing toolbar, exit focus modes
+        if (ToolbarPanel.IsVisible)
+        {
+            if (CheckFocusMode.IsChecked == true)
+            {
+                CheckFocusMode.IsChecked = false;
+            }
+            if (_isInSuperFocusMode)
+            {
+                ExitSuperFocusMode();
+            }
+        }
+
         SavePreferences();
         Editor.Focus();
     }
@@ -710,6 +767,20 @@ public partial class MainWindow : Window
         {
             mainGrid.ColumnDefinitions[0].Width = isVisible ? new GridLength(240) : new GridLength(0);
         }
+
+        // If showing sidebar, exit focus modes
+        if (isVisible)
+        {
+            if (CheckFocusMode.IsChecked == true)
+            {
+                CheckFocusMode.IsChecked = false;
+            }
+            if (_isInSuperFocusMode)
+            {
+                ExitSuperFocusMode();
+            }
+        }
+
         SavePreferences();
         Editor.Focus();
     }
@@ -718,8 +789,285 @@ public partial class MainWindow : Window
     {
         FooterPanel.IsVisible = !FooterPanel.IsVisible;
         CheckFooter.IsChecked = FooterPanel.IsVisible;
+
+        // If showing footer, exit focus modes
+        if (FooterPanel.IsVisible)
+        {
+            if (CheckFocusMode.IsChecked == true)
+            {
+                CheckFocusMode.IsChecked = false;
+            }
+            if (_isInSuperFocusMode)
+            {
+                ExitSuperFocusMode();
+            }
+        }
+
         SavePreferences();
         Editor.Focus();
+    }
+
+    private void OnToggleFocusMode(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        bool isFocusMode = !CheckFocusMode.IsChecked ?? false;
+        CheckFocusMode.IsChecked = isFocusMode;
+
+        if (isFocusMode)
+        {
+            // Remember current state before hiding
+            _preFocusModeToolbarVisible = ToolbarPanel.IsVisible;
+            _preFocusModeSidebarVisible = SidebarPanel.IsVisible;
+            _preFocusModeFooterVisible = FooterPanel.IsVisible;
+
+            // Hide all UI elements
+            ToolbarPanel.IsVisible = false;
+            FooterPanel.IsVisible = false;
+            SidebarPanel.IsVisible = false;
+
+            // Adjust grid to hide sidebar column
+            var mainGrid = this.FindControl<Grid>("MainGrid");
+            if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
+            {
+                mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+            }
+
+            // Update checkboxes
+            CheckToolbar.IsChecked = false;
+            CheckSidebar.IsChecked = false;
+            CheckFooter.IsChecked = false;
+        }
+        else
+        {
+            // Restore previous state
+            ToolbarPanel.IsVisible = _preFocusModeToolbarVisible;
+            FooterPanel.IsVisible = _preFocusModeFooterVisible;
+            SidebarPanel.IsVisible = _preFocusModeSidebarVisible;
+
+            // Restore sidebar column based on previous visibility
+            var mainGrid = this.FindControl<Grid>("MainGrid");
+            if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
+            {
+                mainGrid.ColumnDefinitions[0].Width = _preFocusModeSidebarVisible ? new GridLength(240) : new GridLength(0);
+            }
+
+            // Update checkboxes to match restored state
+            CheckToolbar.IsChecked = _preFocusModeToolbarVisible;
+            CheckSidebar.IsChecked = _preFocusModeSidebarVisible;
+            CheckFooter.IsChecked = _preFocusModeFooterVisible;
+        }
+
+        SavePreferences();
+        Editor.Focus();
+    }
+
+    private async void OnToggleSuperFocusMode(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        _isInSuperFocusMode = !_isInSuperFocusMode;
+        CheckSuperFocusMode.IsChecked = _isInSuperFocusMode;
+
+        if (_isInSuperFocusMode)
+        {
+            // Remember current state before hiding everything
+            _preSuperFocusModeToolbarVisible = ToolbarPanel.IsVisible;
+            _preSuperFocusModeSidebarVisible = SidebarPanel.IsVisible;
+            _preSuperFocusModeFooterVisible = FooterPanel.IsVisible;
+            _preSuperFocusModeTitleBarVisible = TitleBarPanel.IsVisible;
+
+            // Enter fullscreen mode
+            this.WindowState = Avalonia.Controls.WindowState.FullScreen;
+
+            // Hide ALL UI elements including title bar
+            ToolbarPanel.IsVisible = false;
+            FooterPanel.IsVisible = false;
+            SidebarPanel.IsVisible = false;
+            TitleBarPanel.IsVisible = false;
+
+            // Collapse top and bottom rows of outer grid
+            var outerGrid = this.FindControl<Grid>("MainOuterGrid");
+            if (outerGrid != null && outerGrid.RowDefinitions.Count >= 3)
+            {
+                outerGrid.RowDefinitions[0].Height = new GridLength(0); // Top row
+                outerGrid.RowDefinitions[2].Height = new GridLength(0); // Bottom row
+            }
+
+            // Collapse footer row in inner grid and hide sidebar column
+            var mainGrid = this.FindControl<Grid>("MainGrid");
+            if (mainGrid != null)
+            {
+                if (mainGrid.ColumnDefinitions.Count > 0)
+                {
+                    mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+                }
+                if (mainGrid.RowDefinitions.Count >= 2)
+                {
+                    mainGrid.RowDefinitions[1].Height = new GridLength(0); // Footer row
+                }
+            }
+
+            // Remove ALL padding for true fullscreen
+            var editorArea = this.FindControl<Border>("EditorAreaBorder");
+            if (editorArea != null)
+            {
+                editorArea.Padding = new Thickness(0);
+            }
+
+            // Remove corner radius for sharp edges in fullscreen
+            var editorInner = this.FindControl<Border>("EditorInnerBorder");
+            if (editorInner != null)
+            {
+                editorInner.CornerRadius = new CornerRadius(0);
+            }
+
+            // Update checkboxes
+            CheckToolbar.IsChecked = false;
+            CheckSidebar.IsChecked = false;
+            CheckFooter.IsChecked = false;
+
+            // Make sure focus mode is off
+            CheckFocusMode.IsChecked = false;
+
+            // Show the exit hint overlay
+            await ShowSuperFocusHintAsync();
+        }
+        else
+        {
+            ExitSuperFocusMode();
+        }
+
+        SavePreferences();
+        Editor.Focus();
+    }
+
+    private void ExitSuperFocusMode()
+    {
+        _isInSuperFocusMode = false;
+        CheckSuperFocusMode.IsChecked = false;
+
+        // Exit fullscreen mode
+        WindowState = WindowState.Normal;
+
+        // Restore top and bottom rows of main grid
+        var outerGrid = this.FindControl<Grid>("MainOuterGrid");
+        if (outerGrid != null && outerGrid.RowDefinitions.Count >= 3)
+        {
+            outerGrid.RowDefinitions[0].Height = new GridLength(40); // Top row
+            outerGrid.RowDefinitions[2].Height = new GridLength(40); // Bottom row
+        }
+
+        // Restore previous state
+        ToolbarPanel.IsVisible = _preSuperFocusModeToolbarVisible;
+        FooterPanel.IsVisible = _preSuperFocusModeFooterVisible;
+        SidebarPanel.IsVisible = _preSuperFocusModeSidebarVisible;
+        TitleBarPanel.IsVisible = _preSuperFocusModeTitleBarVisible;
+
+        // Restore sidebar column and footer row in inner grid
+        var mainGrid = this.FindControl<Grid>("MainGrid");
+        if (mainGrid != null)
+        {
+            if (mainGrid.ColumnDefinitions.Count > 0)
+            {
+                mainGrid.ColumnDefinitions[0].Width = _preSuperFocusModeSidebarVisible ? new GridLength(240) : new GridLength(0);
+            }
+            if (mainGrid.RowDefinitions.Count >= 2)
+            {
+                mainGrid.RowDefinitions[1].Height = new GridLength(40); // Footer row
+            }
+        }
+
+        // Restore normal padding
+        var editorArea = this.FindControl<Border>("EditorAreaBorder");
+        if (editorArea != null)
+        {
+            editorArea.Padding = new Thickness(20);
+        }
+
+        // Restore corner radius
+        var editorInner = this.FindControl<Border>("EditorInnerBorder");
+        if (editorInner != null)
+        {
+            editorInner.CornerRadius = new CornerRadius(6);
+        }
+
+        // Update checkboxes to match restored state
+        CheckToolbar.IsChecked = _preSuperFocusModeToolbarVisible;
+        CheckSidebar.IsChecked = _preSuperFocusModeSidebarVisible;
+        CheckFooter.IsChecked = _preSuperFocusModeFooterVisible;
+    }
+
+    private async System.Threading.Tasks.Task ShowSuperFocusHintAsync()
+    {
+        var overlay = this.FindControl<Border>("SuperFocusHintOverlay");
+        if (overlay == null) return;
+
+        // Show overlay with full opacity
+        overlay.IsVisible = true;
+        overlay.Opacity = 1.0;
+
+        // Wait 2.5 seconds
+        await System.Threading.Tasks.Task.Delay(2500);
+
+        // Fade out over 0.5 seconds (50ms per step, 20 steps)
+        for (int i = 20; i >= 0; i--)
+        {
+            overlay.Opacity = i / 20.0;
+            await System.Threading.Tasks.Task.Delay(25);
+        }
+
+        overlay.IsVisible = false;
+    }
+
+    private void OnToggleTypewriterMode(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        _isTypewriterMode = !_isTypewriterMode;
+        CheckTypewriterMode.IsChecked = _isTypewriterMode;
+
+        if (_isTypewriterMode)
+        {
+            // Center the current line
+            CenterCurrentLine();
+        }
+
+        SavePreferences();
+        Editor.Focus();
+    }
+
+    private void CenterCurrentLine()
+    {
+        if (!_isTypewriterMode) return;
+
+        // Find the ScrollViewer inside the Editor TextBox
+        var scrollViewer = Editor.GetVisualDescendants()
+            .OfType<ScrollViewer>()
+            .FirstOrDefault();
+
+        if (scrollViewer == null) return;
+
+        // Get the TextPresenter to calculate line positions
+        var textPresenter = Editor.GetVisualDescendants()
+            .OfType<TextPresenter>()
+            .FirstOrDefault();
+
+        if (textPresenter == null) return;
+
+        // Calculate the line height (approximate)
+        var lineHeight = Editor.FontSize * 1.35; // Typical line height multiplier
+
+        // Calculate which line the caret is on
+        var text = Editor.Text ?? string.Empty;
+        var caretIndex = Editor.CaretIndex;
+
+        var linesBeforeCaret = text.Substring(0, Math.Min(caretIndex, text.Length))
+            .Count(c => c == '\n');
+
+        // Calculate the Y position of the current line
+        var currentLineY = linesBeforeCaret * lineHeight;
+
+        // Calculate the center position (middle of the viewport)
+        var viewportHeight = scrollViewer.Viewport.Height;
+        var targetOffset = currentLineY - (viewportHeight / 2) + (lineHeight / 2);
+
+        // Scroll to center the line
+        scrollViewer.Offset = new Vector(scrollViewer.Offset.X, Math.Max(0, targetOffset));
     }
 
     private UserPreferences LoadPreferences()
@@ -738,7 +1086,8 @@ public partial class MainWindow : Window
         {
             ShowToolbar = ToolbarPanel.IsVisible,
             ShowSidebar = SidebarPanel.IsVisible,
-            ShowFooter = FooterPanel.IsVisible
+            ShowFooter = FooterPanel.IsVisible,
+            TypewriterMode = _isTypewriterMode
         };
 
         var dir = System.IO.Path.GetDirectoryName(_preferencesFilePath);
@@ -771,6 +1120,10 @@ public partial class MainWindow : Window
         // Apply footer preference
         FooterPanel.IsVisible = preferences.ShowFooter;
         CheckFooter.IsChecked = preferences.ShowFooter;
+
+        // Apply typewriter mode preference
+        _isTypewriterMode = preferences.TypewriterMode;
+        CheckTypewriterMode.IsChecked = preferences.TypewriterMode;
     }
 
     private void OnMinimizeClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -813,6 +1166,12 @@ public partial class MainWindow : Window
                 _lastSelectionEnd = Editor.SelectionEnd;
                 _lastCaretIndex = Editor.CaretIndex;
                 _hasSelectionSnapshot = true;
+
+                // Update typewriter mode centering when caret moves
+                if (_isTypewriterMode)
+                {
+                    CenterCurrentLine();
+                }
             }
         }
     }
@@ -1317,12 +1676,26 @@ public partial class MainWindow : Window
             {
                 _manuscript.Documents.Remove(doc);
 
-                // If we just deleted the active document, clear the editor
+                // If we just deleted the active document, select another one
                 if (_activeDocument == doc)
                 {
-                    _activeDocument = null;
-                    Editor.Text = string.Empty;
+                    if (_manuscript.Documents.Count > 0)
+                    {
+                        // Select the first remaining document
+                        _activeDocument = _manuscript.Documents[0];
+                        DocumentList.SelectedItem = _activeDocument;
+                        Editor.Text = _activeDocument.Text;
+                    }
+                    else
+                    {
+                        // No documents left
+                        _activeDocument = null;
+                        Editor.Text = string.Empty;
+                    }
                 }
+
+                // Save the manuscript
+                _storage.SaveManuscript(_manuscript);
 
                 dialog.Close();
             };
@@ -1471,6 +1844,274 @@ public partial class MainWindow : Window
         };
 
         await dialog.ShowDialog(this);
+    }
+
+    // Drag and Drop handlers for document reordering
+    private void OnDocumentPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (sender is Border border && border.DataContext is Document doc)
+        {
+            _draggedDocument = doc;
+            _dragStartPoint = e.GetPosition(border);
+            _isDragging = false;
+        }
+    }
+
+    private void OnDocumentPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_draggedDocument == null || sender is not Border border) return;
+
+        var currentPoint = e.GetPosition(border);
+        var diff = currentPoint - _dragStartPoint;
+
+        // Start dragging if moved more than 5 pixels
+        if (!_isDragging && (Math.Abs(diff.X) > 5 || Math.Abs(diff.Y) > 5))
+        {
+            _isDragging = true;
+        }
+
+        if (_isDragging)
+        {
+            var listBox = this.FindControl<ListBox>("DocumentList");
+            var trashZone = this.FindControl<Border>("TrashZone");
+            if (listBox == null || trashZone == null) return;
+
+            // Clear all drop indicators first
+            HideAllDropIndicators();
+
+            // Check if we're over the trash zone
+            var trashPosition = e.GetPosition(trashZone);
+            var trashBounds = new Rect(0, 0, trashZone.Bounds.Width, trashZone.Bounds.Height);
+
+            if (trashBounds.Contains(trashPosition))
+            {
+                _isOverTrash = true;
+                _dropTargetIndex = -1;
+                // Highlight trash zone
+                trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E81123"));
+                return;
+            }
+            else
+            {
+                _isOverTrash = false;
+                trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+            }
+
+            var position = e.GetPosition(listBox);
+            int draggedIndex = _manuscript.Documents.IndexOf(_draggedDocument);
+
+            // Find which position we're hovering over
+            for (int i = 0; i < _manuscript.Documents.Count; i++)
+            {
+                var container = listBox.ContainerFromIndex(i);
+                if (container is Control control)
+                {
+                    var controlPos = control.TranslatePoint(new Point(0, 0), listBox);
+                    if (controlPos.HasValue)
+                    {
+                        var itemBounds = new Rect(controlPos.Value, control.Bounds.Size);
+
+                        if (itemBounds.Contains(position))
+                        {
+                            // Determine if we should show indicator above or below
+                            var relativeY = position.Y - controlPos.Value.Y;
+                            var midPoint = itemBounds.Height / 2;
+
+                            if (relativeY < midPoint)
+                            {
+                                // Show drop indicator above this item
+                                _dropTargetIndex = i;
+                            }
+                            else
+                            {
+                                // Show drop indicator below this item
+                                _dropTargetIndex = i + 1;
+                            }
+
+                            // Don't show indicator if dropping in same position
+                            if (_dropTargetIndex == draggedIndex || _dropTargetIndex == draggedIndex + 1)
+                            {
+                                _dropTargetIndex = -1;
+                            }
+                            else
+                            {
+                                ShowDropIndicator(_dropTargetIndex);
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void OnDocumentPointerReleased(object? sender, PointerReleasedEventArgs e)
+    {
+        var trashZone = this.FindControl<Border>("TrashZone");
+
+        if (_isDragging && _draggedDocument != null)
+        {
+            // Check if dropped on trash zone
+            if (_isOverTrash)
+            {
+                // Delete the document
+                _manuscript.Documents.Remove(_draggedDocument);
+
+                // Update active document if needed
+                if (_activeDocument == _draggedDocument)
+                {
+                    if (_manuscript.Documents.Count > 0)
+                    {
+                        _activeDocument = _manuscript.Documents[0];
+                        DocumentList.SelectedItem = _activeDocument;
+                        Editor.Text = _activeDocument.Text;
+                    }
+                    else
+                    {
+                        _activeDocument = null;
+                        Editor.Text = string.Empty;
+                    }
+                }
+
+                _storage.SaveManuscript(_manuscript);
+
+                // Reset trash zone background
+                if (trashZone != null)
+                {
+                    trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+                }
+            }
+            else if (_dropTargetIndex >= 0)
+            {
+                // Reorder the document
+                int oldIndex = _manuscript.Documents.IndexOf(_draggedDocument);
+                int newIndex = _dropTargetIndex;
+
+                // Adjust index if moving down
+                if (newIndex > oldIndex)
+                {
+                    newIndex--;
+                }
+
+                if (oldIndex != newIndex)
+                {
+                    _manuscript.Documents.Move(oldIndex, newIndex);
+                    _storage.SaveManuscript(_manuscript);
+                }
+            }
+        }
+
+        HideAllDropIndicators();
+
+        // Reset trash zone background
+        if (trashZone != null)
+        {
+            trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+        }
+
+        _draggedDocument = null;
+        _isDragging = false;
+        _dropTargetIndex = -1;
+        _isOverTrash = false;
+    }
+
+    private void HideAllDropIndicators()
+    {
+        var listBox = this.FindControl<ListBox>("DocumentList");
+        if (listBox == null) return;
+
+        for (int i = 0; i < _manuscript.Documents.Count; i++)
+        {
+            var container = listBox.ContainerFromIndex(i);
+            if (container is Control control)
+            {
+                var itemBorder = FindItemBorder(control);
+                if (itemBorder != null)
+                {
+                    itemBorder.BorderBrush = Avalonia.Media.Brushes.Transparent;
+                    itemBorder.BorderThickness = DropIndicatorTopThickness;
+                }
+            }
+        }
+    }
+
+    private void ShowDropIndicator(int position)
+    {
+        var listBox = this.FindControl<ListBox>("DocumentList");
+        if (listBox == null) return;
+
+        // Show indicator at the drop position by changing the border color
+        if (position == 0 && _manuscript.Documents.Count > 0)
+        {
+            // Show at top of first item
+            var container = listBox.ContainerFromIndex(0);
+            if (container is Control control)
+            {
+                var itemBorder = FindItemBorder(control);
+                if (itemBorder != null)
+                {
+                    itemBorder.BorderBrush = DropIndicatorBrush;
+                    itemBorder.BorderThickness = DropIndicatorTopThickness;
+                }
+            }
+        }
+        else if (position > 0 && position < _manuscript.Documents.Count)
+        {
+            // Show at top of the target item
+            var container = listBox.ContainerFromIndex(position);
+            if (container is Control control)
+            {
+                var itemBorder = FindItemBorder(control);
+                if (itemBorder != null)
+                {
+                    itemBorder.BorderBrush = DropIndicatorBrush;
+                    itemBorder.BorderThickness = DropIndicatorTopThickness;
+                }
+            }
+        }
+        else if (position == _manuscript.Documents.Count && _manuscript.Documents.Count > 0)
+        {
+            // Show at bottom of the last item for end-of-list drops
+            var container = listBox.ContainerFromIndex(_manuscript.Documents.Count - 1);
+            if (container is Control control)
+            {
+                var itemBorder = FindItemBorder(control);
+                if (itemBorder != null)
+                {
+                    itemBorder.BorderBrush = DropIndicatorBrush;
+                    itemBorder.BorderThickness = DropIndicatorBottomThickness;
+                }
+            }
+        }
+    }
+
+    private Border? FindItemBorder(Control container)
+    {
+        if (container is Border directBorder && directBorder.Name == "ItemContainer")
+        {
+            return directBorder;
+        }
+
+        return container.GetVisualDescendants()
+            .OfType<Border>()
+            .FirstOrDefault(border => border.Name == "ItemContainer");
+    }
+
+    // Trash zone hover handlers
+    private void OnTrashZonePointerEnter(object? sender, PointerEventArgs e)
+    {
+        if (_isDragging && sender is Border trashZone)
+        {
+            trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#E81123"));
+        }
+    }
+
+    private void OnTrashZonePointerLeave(object? sender, PointerEventArgs e)
+    {
+        if (sender is Border trashZone)
+        {
+            trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+        }
     }
 
 }
