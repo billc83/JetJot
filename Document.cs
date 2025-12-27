@@ -1,3 +1,4 @@
+using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -8,6 +9,10 @@ namespace JetJot.Models
         private string _title = "Untitled";
         private string _text = "";
         private int _wordGoal = 1000;
+
+        public Guid Id { get; set; } = Guid.NewGuid();
+
+        public string FileName => $"{Id}.txt";
 
         public string Title
         {

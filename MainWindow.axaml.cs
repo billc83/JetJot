@@ -3,6 +3,7 @@ using Avalonia.Input;
 using System;
 using System.ComponentModel;
 using System.Collections.Generic;
+using System.Linq;
 using JetJot.Models;
 
 namespace JetJot;
@@ -11,10 +12,16 @@ public partial class MainWindow : Window
 {
     private readonly Manuscript _manuscript = new();
     private Document? _activeDocument;
+    private readonly ManuscriptStorage _storage = new();
 
     public MainWindow()
     {
         InitializeComponent();
+
+        // Set default save location
+        var folderPath = System.IO.Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+            "JetJot");
 
         // Make title bar draggable
         var titleBar = this.FindControl<Border>("TitleBar");
@@ -29,20 +36,52 @@ public partial class MainWindow : Window
             };
         }
 
-        // Create a couple of starter documents
-        var doc1 = new Document { Title = "First Document", Text = "Start writing..." };
-        var doc2 = new Document { Title = "Second Document", Text = "More ideas here..." };
+        // Load existing manuscript or create new one
+        var manifestPath = System.IO.Path.Combine(folderPath, "manuscript.json");
+        if (System.IO.File.Exists(manifestPath))
+        {
+            // Load existing manuscript
+            var loadedManuscript = _storage.LoadManuscript(folderPath);
+            _manuscript.Name = loadedManuscript.Name;
+            _manuscript.FolderPath = loadedManuscript.FolderPath;
+            _manuscript.LastOpenDocumentId = loadedManuscript.LastOpenDocumentId;
 
-        _manuscript.Documents.Add(doc1);
-        _manuscript.Documents.Add(doc2);
+            foreach (var doc in loadedManuscript.Documents)
+            {
+                _manuscript.Documents.Add(doc);
+            }
+        }
+        else
+        {
+            // Create new manuscript with starter documents
+            _manuscript.FolderPath = folderPath;
+            var doc1 = new Document { Title = "First Document", Text = "Start writing..." };
+            var doc2 = new Document { Title = "Second Document", Text = "More ideas here..." };
+            _manuscript.Documents.Add(doc1);
+            _manuscript.Documents.Add(doc2);
+        }
 
         // Populate sidebar
         DocumentList.ItemsSource = _manuscript.Documents;
 
-        // Select first document by default
-        _activeDocument = doc1;
-        DocumentList.SelectedItem = doc1;
-        Editor.Text = doc1.Text;
+        // Select document (last open or first)
+        Document docToSelect;
+        if (_manuscript.LastOpenDocumentId.HasValue)
+        {
+            docToSelect = _manuscript.Documents.FirstOrDefault(d => d.Id == _manuscript.LastOpenDocumentId.Value)
+                          ?? _manuscript.Documents.FirstOrDefault();
+        }
+        else
+        {
+            docToSelect = _manuscript.Documents.FirstOrDefault();
+        }
+
+        if (docToSelect != null)
+        {
+            _activeDocument = docToSelect;
+            DocumentList.SelectedItem = docToSelect;
+            Editor.Text = docToSelect.Text;
+        }
 
         // Sidebar selection changes active document
         DocumentList.SelectionChanged += OnDocumentSelected;
@@ -61,6 +100,17 @@ public partial class MainWindow : Window
 
         // Update word count initially
         UpdateWordCount();
+
+        // Save on window close
+        this.Closing += OnWindowClosing;
+    }
+
+    private void OnWindowClosing(object? sender, CancelEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_manuscript.FolderPath))
+        {
+            _storage.SaveManuscript(_manuscript);
+        }
     }
 
     private void OnToggleToolbar(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -209,6 +259,7 @@ public partial class MainWindow : Window
         if (DocumentList.SelectedItem is Document doc)
         {
             _activeDocument = doc;
+            _manuscript.LastOpenDocumentId = doc.Id;
             Editor.Text = doc.Text;
         }
     }

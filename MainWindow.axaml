@@ -208,7 +208,7 @@
         <!-- ========================= -->
         <Border Grid.Row="1"
                 Grid.Column="1"
-                Padding="40">
+                Padding="20">
 
             <Border Background="#252525"
                     CornerRadius="6"
@@ -299,7 +299,7 @@
                     </Border>
 
                     <!-- Text Editor -->
-                    <Border Grid.Row="1" Padding="24">
+                    <Border Grid.Row="1" Padding="12">
                         <TextBox
                             x:Name="Editor"
                             AcceptsReturn="True"
