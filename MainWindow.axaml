@@ -15,7 +15,7 @@
         ExtendClientAreaTitleBarHeightHint="40">
 
 
-    <Grid RowDefinitions="40,60,*,40">
+    <Grid RowDefinitions="40,*,40">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="240"/>
             <ColumnDefinition Width="*"/>
@@ -67,14 +67,22 @@
                     </MenuItem>
                 </Menu>
 
-                <!-- Center: Title (draggable area) -->
+                <!-- Center: Title with Logo (draggable area) -->
                 <Border x:Name="TitleBar" Grid.Column="1" Background="Transparent">
-                    <TextBlock Text="JetJot"
-                              Foreground="#CCCCCC"
-                              FontSize="12"
-                              VerticalAlignment="Center"
-                              HorizontalAlignment="Center"
-                              IsHitTestVisible="False"/>
+                    <StackPanel Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Center"
+                                IsHitTestVisible="False">
+                        <Image Source="avares://JetJot/Logo.png"
+                               Height="24"
+                               Margin="0,0,8,0"
+                               VerticalAlignment="Center"/>
+                        <TextBlock Text="JetJot - Let Your Writing Fly"
+                                  Foreground="#CCCCCC"
+                                  FontSize="13"
+                                  FontWeight="Normal"
+                                  VerticalAlignment="Center"/>
+                    </StackPanel>
                 </Border>
 
                 <!-- Right: Window Controls -->
@@ -116,43 +124,17 @@
             </Grid>
         </Border>
 
-        <Grid x:Name="MainGrid" Grid.Row="1" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="2" RowDefinitions="60,*,40">
+        <Grid x:Name="MainGrid" Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" RowDefinitions="*,40">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="240"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
         <!-- ========================= -->
-        <!-- Banner -->
-        <!-- ========================= -->
-        <Border Grid.Row="0"
-                Grid.Column="0"
-                Grid.ColumnSpan="2"
-                Background="#2D2D2D"
-                BorderBrush="#3A3A3A"
-                BorderThickness="0,0,0,1"
-                Padding="20,0">
-
-            <StackPanel Orientation="Horizontal"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Center">
-                <Image Source="avares://JetJot/Logo.png"
-                       Height="40"
-                       Margin="0,0,12,0"
-                       VerticalAlignment="Center"/>
-                <TextBlock Text="JetJot - Let Your Creativity Fly"
-                           Foreground="#ffffffff"
-                           FontSize="24"
-                           FontWeight="SemiBold"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
-        </Border>
-
-        <!-- ========================= -->
         <!-- Sidebar -->
         <!-- ========================= -->
         <Border x:Name="SidebarPanel"
-                Grid.Row="1"
+                Grid.Row="0"
                 Grid.Column="0"
                 Background="#2A2A2A"
                 BorderBrush="#3A3A3A"
@@ -231,7 +213,7 @@
         <!-- ========================= -->
         <!-- Editor Area -->
         <!-- ========================= -->
-        <Border Grid.Row="1"
+        <Border Grid.Row="0"
                 Grid.Column="1"
                 Padding="20">
 
@@ -354,7 +336,7 @@
         <!-- Footer -->
         <!-- ========================= -->
         <Border x:Name="FooterPanel"
-                Grid.Row="2"
+                Grid.Row="1"
                 Grid.Column="0"
                 Grid.ColumnSpan="2"
                 Background="#2D2D2D"

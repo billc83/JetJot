@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using System;
@@ -21,6 +22,11 @@ public partial class MainWindow : Window
         Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
         "JetJot",
         "preferences.json");
+
+    private int _lastSelectionStart;
+    private int _lastSelectionEnd;
+    private int _lastCaretIndex;
+    private bool _hasSelectionSnapshot;
 
     public MainWindow()
     {
@@ -114,6 +120,7 @@ public partial class MainWindow : Window
 
         // Typing updates active document
         Editor.TextChanged += OnEditorTextChanged;
+        Editor.PropertyChanged += OnEditorPropertyChanged;
 
         // New document button
         NewDocumentButton.Click += OnNewDocumentClicked;
@@ -280,7 +287,7 @@ public partial class MainWindow : Window
             else
             {
                 // Outside JetJot folder, need to import (copy)
-                var manuscriptFolderName = System.IO.Path.GetFileName(sourceFolderPath);
+                var manuscriptFolderName = System.IO.Path.GetFileName(sourceFolderPath.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar));
                 var destinationPath = System.IO.Path.Combine(jetJotRoot, manuscriptFolderName);
 
                 // Check if already exists in JetJot folder
@@ -688,6 +695,7 @@ public partial class MainWindow : Window
         ToolbarPanel.IsVisible = !ToolbarPanel.IsVisible;
         CheckToolbar.IsChecked = ToolbarPanel.IsVisible;
         SavePreferences();
+        Editor.Focus();
     }
 
     private void OnToggleSidebar(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -703,6 +711,7 @@ public partial class MainWindow : Window
             mainGrid.ColumnDefinitions[0].Width = isVisible ? new GridLength(240) : new GridLength(0);
         }
         SavePreferences();
+        Editor.Focus();
     }
 
     private void OnToggleFooter(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -710,6 +719,7 @@ public partial class MainWindow : Window
         FooterPanel.IsVisible = !FooterPanel.IsVisible;
         CheckFooter.IsChecked = FooterPanel.IsVisible;
         SavePreferences();
+        Editor.Focus();
     }
 
     private UserPreferences LoadPreferences()
@@ -791,29 +801,122 @@ public partial class MainWindow : Window
         Close();
     }
 
+    private void OnEditorPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == TextBox.SelectionStartProperty ||
+            e.Property == TextBox.SelectionEndProperty ||
+            e.Property == TextBox.CaretIndexProperty)
+        {
+            if (Editor.IsFocused)
+            {
+                _lastSelectionStart = Editor.SelectionStart;
+                _lastSelectionEnd = Editor.SelectionEnd;
+                _lastCaretIndex = Editor.CaretIndex;
+                _hasSelectionSnapshot = true;
+            }
+        }
+    }
+
+    private void EnsureEditorReadyForCommand()
+    {
+        if (!_hasSelectionSnapshot)
+        {
+            Editor.Focus();
+            return;
+        }
+
+        if (!Editor.IsFocused)
+        {
+            RestoreEditorSelectionSnapshot();
+            Editor.Focus();
+        }
+    }
+
+    private void RestoreEditorSelectionSnapshot()
+    {
+        var textLength = Editor.Text?.Length ?? 0;
+        var start = Math.Clamp(_lastSelectionStart, 0, textLength);
+        var end = Math.Clamp(_lastSelectionEnd, 0, textLength);
+        var caret = Math.Clamp(_lastCaretIndex, 0, textLength);
+
+        Editor.SelectionStart = start;
+        Editor.SelectionEnd = end;
+        Editor.CaretIndex = caret;
+    }
+
     private void OnUndoClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
+        EnsureEditorReadyForCommand();
         Editor.Undo();
+        Editor.Focus();
     }
 
     private void OnRedoClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
+        EnsureEditorReadyForCommand();
         Editor.Redo();
+        Editor.Focus();
     }
 
-    private void OnCutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void OnCutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Editor.Cut();
+        EnsureEditorReadyForCommand();
+        // Get selection before focus is lost
+        var selectedText = Editor.SelectedText;
+        if (!string.IsNullOrEmpty(selectedText) && Clipboard != null)
+        {
+            await Clipboard.SetTextAsync(selectedText);
+
+            // Remove the selected text
+            var selectionStart = Editor.SelectionStart;
+            var selectionEnd = Editor.SelectionEnd;
+            var currentText = Editor.Text ?? string.Empty;
+            Editor.Text = currentText.Remove(selectionStart, selectionEnd - selectionStart);
+            Editor.CaretIndex = selectionStart;
+        }
+        Editor.Focus();
     }
 
-    private void OnCopyClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void OnCopyClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Editor.Copy();
+        EnsureEditorReadyForCommand();
+        // Get selection before focus is lost
+        var selectedText = Editor.SelectedText;
+        if (!string.IsNullOrEmpty(selectedText) && Clipboard != null)
+        {
+            await Clipboard.SetTextAsync(selectedText);
+        }
+        Editor.Focus();
     }
 
-    private void OnPasteClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    private async void OnPasteClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        Editor.Paste();
+        EnsureEditorReadyForCommand();
+        if (Clipboard == null) return;
+
+        var clipboardText = await Clipboard.GetTextAsync() ?? string.Empty;
+        if (!string.IsNullOrEmpty(clipboardText))
+        {
+            var caretIndex = Editor.CaretIndex;
+            var currentText = Editor.Text ?? string.Empty;
+
+            // If there's a selection, replace it
+            if (Editor.SelectionStart != Editor.SelectionEnd)
+            {
+                var selectionStart = Editor.SelectionStart;
+                var selectionEnd = Editor.SelectionEnd;
+                currentText = currentText.Remove(selectionStart, selectionEnd - selectionStart);
+                Editor.Text = currentText.Insert(selectionStart, clipboardText);
+                Editor.CaretIndex = selectionStart + clipboardText.Length;
+            }
+            else
+            {
+                // No selection, just insert at caret
+                Editor.Text = currentText.Insert(caretIndex, clipboardText);
+                Editor.CaretIndex = caretIndex + clipboardText.Length;
+            }
+        }
+        Editor.Focus();
     }
 
     private async void OnAboutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
