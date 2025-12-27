@@ -55,6 +55,7 @@ public partial class MainWindow : Window
 
     // Typewriter mode state
     private bool _isTypewriterMode = false;
+    private const int TypewriterCenteringLineThreshold = 10;
 
     public MainWindow()
     {
@@ -164,6 +165,7 @@ public partial class MainWindow : Window
         // Typing updates active document
         Editor.TextChanged += OnEditorTextChanged;
         Editor.PropertyChanged += OnEditorPropertyChanged;
+
 
         // New document button
         NewDocumentButton.Click += OnNewDocumentClicked;
@@ -1031,6 +1033,7 @@ public partial class MainWindow : Window
         Editor.Focus();
     }
 
+
     private void CenterCurrentLine()
     {
         if (!_isTypewriterMode) return;
@@ -1042,13 +1045,6 @@ public partial class MainWindow : Window
 
         if (scrollViewer == null) return;
 
-        // Get the TextPresenter to calculate line positions
-        var textPresenter = Editor.GetVisualDescendants()
-            .OfType<TextPresenter>()
-            .FirstOrDefault();
-
-        if (textPresenter == null) return;
-
         // Calculate the line height (approximate)
         var lineHeight = Editor.FontSize * 1.35; // Typical line height multiplier
 
@@ -1058,6 +1054,15 @@ public partial class MainWindow : Window
 
         var linesBeforeCaret = text.Substring(0, Math.Min(caretIndex, text.Length))
             .Count(c => c == '\n');
+        var totalLines = 1 + text.Count(c => c == '\n');
+        var linesAfterCaret = (totalLines - 1) - linesBeforeCaret;
+
+        // Only center when we're far enough from the start and end.
+        if (linesBeforeCaret < TypewriterCenteringLineThreshold ||
+            linesAfterCaret < TypewriterCenteringLineThreshold)
+        {
+            return;
+        }
 
         // Calculate the Y position of the current line
         var currentLineY = linesBeforeCaret * lineHeight;
@@ -1065,9 +1070,11 @@ public partial class MainWindow : Window
         // Calculate the center position (middle of the viewport)
         var viewportHeight = scrollViewer.Viewport.Height;
         var targetOffset = currentLineY - (viewportHeight / 2) + (lineHeight / 2);
+        var maxOffset = Math.Max(0, scrollViewer.Extent.Height - viewportHeight);
 
         // Scroll to center the line
-        scrollViewer.Offset = new Vector(scrollViewer.Offset.X, Math.Max(0, targetOffset));
+        var clampedOffset = Math.Clamp(targetOffset, 0, maxOffset);
+        scrollViewer.Offset = new Vector(scrollViewer.Offset.X, clampedOffset);
     }
 
     private UserPreferences LoadPreferences()
@@ -1124,6 +1131,11 @@ public partial class MainWindow : Window
         // Apply typewriter mode preference
         _isTypewriterMode = preferences.TypewriterMode;
         CheckTypewriterMode.IsChecked = preferences.TypewriterMode;
+
+        if (_isTypewriterMode)
+        {
+            CenterCurrentLine();
+        }
     }
 
     private void OnMinimizeClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
