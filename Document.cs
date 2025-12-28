@@ -9,6 +9,7 @@ namespace JetJot.Models
         private string _title = "Untitled";
         private string _text = "";
         private int _wordGoal = 1000;
+        private bool _isLocked = false;
 
         public Guid Id { get; set; } = Guid.NewGuid();
 
@@ -48,6 +49,19 @@ namespace JetJot.Models
                 if (_wordGoal != value)
                 {
                     _wordGoal = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsLocked
+        {
+            get => _isLocked;
+            set
+            {
+                if (_isLocked != value)
+                {
+                    _isLocked = value;
                     OnPropertyChanged();
                 }
             }

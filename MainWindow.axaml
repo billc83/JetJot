@@ -295,14 +295,23 @@
                                             <ContextMenu>
                                                 <MenuItem Header="Rename" Click="OnRenameMenuClicked"/>
                                                 <Separator/>
+                                                <MenuItem Header="Lock" Click="OnLockMenuClicked" IsVisible="{Binding !IsLocked}"/>
+                                                <MenuItem Header="Unlock" Click="OnUnlockMenuClicked" IsVisible="{Binding IsLocked}"/>
+                                                <Separator/>
                                                 <MenuItem Header="Move Up" Click="OnMoveUpClicked"/>
                                                 <MenuItem Header="Move Down" Click="OnMoveDownClicked"/>
                                                 <Separator/>
                                                 <MenuItem Header="Delete" Click="OnDeleteMenuClicked"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
-                                        <TextBlock Text="{Binding Title}"
-                                                   VerticalAlignment="Center"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="🔒"
+                                                       IsVisible="{Binding IsLocked}"
+                                                       VerticalAlignment="Center"
+                                                       FontSize="12"/>
+                                            <TextBlock Text="{Binding Title}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>

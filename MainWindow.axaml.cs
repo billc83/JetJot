@@ -1953,6 +1953,9 @@ public partial class MainWindow : Window
             _manuscript.LastOpenDocumentId = doc.Id;
             Editor.Text = doc.Text;
 
+            // Set read-only state based on lock status
+            Editor.IsReadOnly = doc.IsLocked;
+
             // Apply accent color to selected document
             UpdateSelectedDocumentColor();
         }
@@ -2098,6 +2101,38 @@ public partial class MainWindow : Window
         };
 
         await dialog.ShowDialog(this);
+    }
+
+    private void OnLockMenuClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
+        {
+            doc.IsLocked = true;
+
+            // If this is the active document, make the editor read-only
+            if (_activeDocument == doc)
+            {
+                Editor.IsReadOnly = true;
+            }
+
+            _storage.SaveManuscript(_manuscript);
+        }
+    }
+
+    private void OnUnlockMenuClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
+        {
+            doc.IsLocked = false;
+
+            // If this is the active document, make the editor editable
+            if (_activeDocument == doc)
+            {
+                Editor.IsReadOnly = false;
+            }
+
+            _storage.SaveManuscript(_manuscript);
+        }
     }
 
     private void OnMoveUpClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
