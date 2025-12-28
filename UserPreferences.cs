@@ -8,5 +8,6 @@ namespace JetJot.Models
         public bool TypewriterMode { get; set; } = false;
         public string FontFamily { get; set; } = "Segoe UI";
         public int FontSize { get; set; } = 16;
+        public string AccentColor { get; set; } = "#4A5D73";
     }
 }

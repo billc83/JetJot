@@ -34,7 +34,6 @@ public partial class MainWindow : Window
 
     private static readonly Avalonia.Thickness DropIndicatorTopThickness = new(0, 2, 0, 0);
     private static readonly Avalonia.Thickness DropIndicatorBottomThickness = new(0, 0, 0, 2);
-    private static readonly Avalonia.Media.IBrush DropIndicatorBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#8B5CA8"));
 
     private int _lastSelectionStart;
     private int _lastSelectionEnd;
@@ -57,18 +56,35 @@ public partial class MainWindow : Window
     private bool _isTypewriterMode = false;
     private const int TypewriterCenteringLineThreshold = 10;
 
+    // Accent color
+    private string _accentColor = "#4A5D73";
+
     public MainWindow()
     {
         InitializeComponent();
 
-        // Add F11 and Escape key handlers for Super Focus Mode
+        // Add keyboard shortcuts
         this.KeyDown += (sender, e) =>
         {
-            if (e.Key == Avalonia.Input.Key.F11)
+            // Ctrl+N - New Document
+            if (e.Key == Avalonia.Input.Key.N && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnNewDocumentClicked(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+S - Save Document
+            else if (e.Key == Avalonia.Input.Key.S && e.KeyModifiers == KeyModifiers.Control)
+            {
+                SaveCurrentDocument();
+                e.Handled = true;
+            }
+            // F11 - Toggle Super Focus Mode
+            else if (e.Key == Avalonia.Input.Key.F11)
             {
                 OnToggleSuperFocusMode(null, null!);
                 e.Handled = true;
             }
+            // Escape - Exit Super Focus Mode
             else if (e.Key == Avalonia.Input.Key.Escape && _isInSuperFocusMode)
             {
                 OnToggleSuperFocusMode(null, null!);
@@ -130,8 +146,8 @@ public partial class MainWindow : Window
             // Create new manuscript with starter documents in its own folder
             var manuscriptFolder = System.IO.Path.Combine(jetJotRoot, "Untitled Manuscript");
             _manuscript.FolderPath = manuscriptFolder;
-            var doc1 = new Document { Title = "First Document", Text = "Start writing..." };
-            var doc2 = new Document { Title = "Second Document", Text = "More ideas here..." };
+            var doc1 = new Document { Title = "First Document", Text = "" };
+            var doc2 = new Document { Title = "Second Document", Text = "" };
             _manuscript.Documents.Add(doc1);
             _manuscript.Documents.Add(doc2);
         }
@@ -240,14 +256,16 @@ public partial class MainWindow : Window
         }
 
         // Prompt for new manuscript name
-        var dialog = new Window
+        var dialog = CreateStyledDialog("New Manuscript", 400, 185);
+
+        var grid = new Grid
         {
-            Title = "New Manuscript",
-            Width = 400,
-            Height = 150,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
+            RowDefinitions = new RowDefinitions("35,*")
         };
+
+        var titleBar = CreateDialogTitleBar("New Manuscript", dialog);
+        Grid.SetRow(titleBar, 0);
+        grid.Children.Add(titleBar);
 
         var textBox = new TextBox
         {
@@ -256,6 +274,8 @@ public partial class MainWindow : Window
             Margin = new Avalonia.Thickness(0, 0, 0, 20)
         };
 
+        ApplyAccentToTextBox(textBox);
+
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
@@ -263,17 +283,19 @@ public partial class MainWindow : Window
             Spacing = 10
         };
 
-        var okButton = new Button
-        {
-            Content = "Create",
-            Width = 80,
-            Margin = new Avalonia.Thickness(0, 0, 10, 0)
-        };
+        var okButton = CreateAccentButton("Create", 80);
+        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
             Content = "Cancel",
-            Width = 80
+            Width = 80,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A")),
+            Foreground = Avalonia.Media.Brushes.White,
+            BorderThickness = new Avalonia.Thickness(0),
+            CornerRadius = new Avalonia.CornerRadius(4),
+            FontSize = 14,
+            Cursor = new Avalonia.Input.Cursor(Avalonia.Input.StandardCursorType.Hand)
         };
 
         okButton.Click += (s, args) =>
@@ -304,12 +326,15 @@ public partial class MainWindow : Window
 
         var panel = new StackPanel
         {
-            Margin = new Avalonia.Thickness(20)
+            Margin = new Avalonia.Thickness(20, 15, 20, 20)
         };
         panel.Children.Add(textBox);
         panel.Children.Add(buttonPanel);
 
-        dialog.Content = panel;
+        Grid.SetRow(panel, 1);
+        grid.Children.Add(panel);
+
+        dialog.Content = grid;
 
         textBox.AttachedToVisualTree += (s, args) =>
         {
@@ -496,8 +521,8 @@ public partial class MainWindow : Window
         _manuscript.FolderPath = System.IO.Path.Combine(jetJotRoot, name);
 
         // Create starter documents
-        var doc1 = new Document { Title = "First Document", Text = "Start writing..." };
-        var doc2 = new Document { Title = "Second Document", Text = "More ideas here..." };
+        var doc1 = new Document { Title = "First Document", Text = "" };
+        var doc2 = new Document { Title = "Second Document", Text = "" };
         _manuscript.Documents.Add(doc1);
         _manuscript.Documents.Add(doc2);
 
@@ -1129,8 +1154,9 @@ public partial class MainWindow : Window
             ShowSidebar = SidebarPanel.IsVisible,
             ShowFooter = FooterPanel.IsVisible,
             TypewriterMode = _isTypewriterMode,
-            FontFamily = Editor.FontFamily?.ToString() ?? "Segoe UI",
-            FontSize = (int)Editor.FontSize
+            FontFamily = Editor.FontFamily?.ToString() ?? "IBM Plex Sans",
+            FontSize = (int)Editor.FontSize,
+            AccentColor = _accentColor
         };
 
         var dir = System.IO.Path.GetDirectoryName(_preferencesFilePath);
@@ -1141,6 +1167,37 @@ public partial class MainWindow : Window
 
         var json = System.Text.Json.JsonSerializer.Serialize(preferences, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         System.IO.File.WriteAllText(_preferencesFilePath, json);
+    }
+
+    private async void SaveCurrentDocument()
+    {
+        // Save the manuscript
+        _storage.SaveManuscript(_manuscript);
+
+        // Show save feedback
+        await ShowSaveFeedback();
+    }
+
+    private async System.Threading.Tasks.Task ShowSaveFeedback()
+    {
+        var feedbackText = this.FindControl<TextBlock>("SaveFeedbackText");
+        if (feedbackText != null)
+        {
+            feedbackText.IsVisible = true;
+            feedbackText.Opacity = 1.0;
+
+            // Wait 1.5 seconds
+            await System.Threading.Tasks.Task.Delay(1500);
+
+            // Fade out gradually
+            for (int i = 10; i >= 0; i--)
+            {
+                feedbackText.Opacity = i / 10.0;
+                await System.Threading.Tasks.Task.Delay(30);
+            }
+
+            feedbackText.IsVisible = false;
+        }
     }
 
     private void LoadAndApplyPreferences()
@@ -1180,6 +1237,207 @@ public partial class MainWindow : Window
         // Update combo boxes to match
         SetFontFamilyComboBox(preferences.FontFamily);
         SetFontSizeComboBox(preferences.FontSize);
+
+        // Apply accent color preference
+        _accentColor = preferences.AccentColor;
+        ApplyAccentColor();
+    }
+
+    private void ApplyAccentColor()
+    {
+        var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
+
+        // Update the dynamic resource so all styled elements update automatically
+        // This will update: TextBox focus borders, ComboBox selections, CheckBox checked states, etc.
+        this.Resources["AccentBrush"] = accentBrush;
+
+        // 1. Title Bar
+        if (this.FindControl<Border>("TitleBarPanel") is Border titleBar)
+        {
+            titleBar.Background = accentBrush;
+        }
+
+        // 2. New Document Button
+        if (this.FindControl<Button>("NewDocumentButton") is Button newDocBtn)
+        {
+            newDocBtn.Background = accentBrush;
+        }
+
+        // 3. Progress Bar
+        if (this.FindControl<ProgressBar>("WordProgressBar") is ProgressBar progressBar)
+        {
+            progressBar.Foreground = accentBrush;
+        }
+
+        // 4. Toolbar bottom border (horizontal accent)
+        if (this.FindControl<Border>("ToolbarPanel") is Border toolbar)
+        {
+            toolbar.BorderBrush = accentBrush;
+        }
+
+        // 5. Sidebar right border (vertical accent)
+        if (this.FindControl<Border>("SidebarPanel") is Border sidebar)
+        {
+            sidebar.BorderBrush = accentBrush;
+        }
+
+        // 6. Accent Color Button in toolbar
+        if (this.FindControl<Button>("AccentColorButton") is Button accentButton)
+        {
+            accentButton.Background = accentBrush;
+        }
+
+        // 7. Update selected document background
+        UpdateSelectedDocumentColor();
+    }
+
+    private void UpdateSelectedDocumentColor()
+    {
+        var listBox = this.FindControl<ListBox>("DocumentList");
+        if (listBox == null) return;
+
+        var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
+
+        // Find the selected item container and update its background
+        if (_activeDocument != null)
+        {
+            var index = _manuscript.Documents.IndexOf(_activeDocument);
+            if (index >= 0)
+            {
+                var container = listBox.ContainerFromIndex(index);
+                if (container is Control control)
+                {
+                    var itemBorder = FindItemBorder(control);
+                    if (itemBorder != null)
+                    {
+                        itemBorder.Background = accentBrush;
+                    }
+                }
+            }
+        }
+    }
+
+    private Window CreateStyledDialog(string title, double width, double height)
+    {
+        var dialog = new Window
+        {
+            Title = title,
+            Width = width,
+            Height = height,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false,
+            ExtendClientAreaToDecorationsHint = true,
+            ExtendClientAreaChromeHints = Avalonia.Platform.ExtendClientAreaChromeHints.NoChrome,
+            ExtendClientAreaTitleBarHeightHint = 35,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"))
+        };
+
+        return dialog;
+    }
+
+    private void ApplyAccentToTextBox(TextBox textBox)
+    {
+        var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
+
+        // Set selection color
+        textBox.SelectionBrush = accentBrush;
+
+        // Set focus border color when template is applied
+        textBox.TemplateApplied += (s, e) =>
+        {
+            if (e.NameScope.Find<Border>("PART_BorderElement") is Border border)
+            {
+                // Store original brush
+                var originalBrush = border.BorderBrush;
+
+                // Apply accent color immediately if already focused (for auto-focused dialogs)
+                if (textBox.IsFocused)
+                {
+                    border.BorderBrush = accentBrush;
+                }
+
+                textBox.GotFocus += (sender, args) =>
+                {
+                    border.BorderBrush = accentBrush;
+                };
+
+                textBox.LostFocus += (sender, args) =>
+                {
+                    border.BorderBrush = originalBrush;
+                };
+            }
+        };
+    }
+
+    private Border CreateDialogTitleBar(string title, Window dialog)
+    {
+        var titleBar = new Border
+        {
+            Height = 35,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor))
+        };
+
+        var titleGrid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("*,Auto")
+        };
+
+        var titleText = new TextBlock
+        {
+            Text = title,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            Margin = new Avalonia.Thickness(15, 0, 0, 0),
+            FontSize = 13
+        };
+
+        var closeButton = new Button
+        {
+            Content = "✕",
+            Width = 35,
+            Height = 35,
+            Background = Avalonia.Media.Brushes.Transparent,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")),
+            BorderThickness = new Avalonia.Thickness(0),
+            FontSize = 12,
+            HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            VerticalContentAlignment = Avalonia.Layout.VerticalAlignment.Center
+        };
+
+        closeButton.Click += (s, e) => dialog.Close();
+
+        Grid.SetColumn(titleText, 0);
+        Grid.SetColumn(closeButton, 1);
+
+        titleGrid.Children.Add(titleText);
+        titleGrid.Children.Add(closeButton);
+
+        titleBar.Child = titleGrid;
+
+        // Make title bar draggable
+        titleBar.PointerPressed += (sender, e) =>
+        {
+            if (e.GetCurrentPoint(dialog).Properties.IsLeftButtonPressed)
+            {
+                dialog.BeginMoveDrag(e);
+            }
+        };
+
+        return titleBar;
+    }
+
+    private Button CreateAccentButton(string content, double width = 80)
+    {
+        return new Button
+        {
+            Content = content,
+            Width = width,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor)),
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")),
+            BorderThickness = new Avalonia.Thickness(0),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Avalonia.Thickness(12, 6)
+        };
     }
 
     private void SetFontFamilyComboBox(string fontFamily)
@@ -1369,14 +1627,15 @@ public partial class MainWindow : Window
 
     private async void OnAboutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var dialog = new Window
+        var dialog = CreateStyledDialog("About JetJot", 400, 235);
+
+        var outerGrid = new Grid
         {
-            Title = "About JetJot",
-            Width = 400,
-            Height = 200,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
+            RowDefinitions = new RowDefinitions("35,*")
         };
+
+        var titleBar = CreateDialogTitleBar("About JetJot", dialog);
+        Grid.SetRow(titleBar, 0);
 
         var stackPanel = new StackPanel
         {
@@ -1390,7 +1649,8 @@ public partial class MainWindow : Window
             Text = "JetJot",
             FontSize = 28,
             FontWeight = Avalonia.Media.FontWeight.Bold,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Foreground = Avalonia.Media.Brushes.White
         };
 
         var taglineText = new TextBlock
@@ -1403,19 +1663,15 @@ public partial class MainWindow : Window
 
         var versionText = new TextBlock
         {
-            Text = "Version 0.05",
+            Text = "Version 0.20",
             FontSize = 12,
             Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999")),
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
         };
 
-        var okButton = new Button
-        {
-            Content = "OK",
-            Width = 100,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-            Margin = new Avalonia.Thickness(0, 10, 0, 0)
-        };
+        var okButton = CreateAccentButton("OK", 100);
+        okButton.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+        okButton.Margin = new Avalonia.Thickness(0, 10, 0, 0);
 
         okButton.Click += (s, args) => dialog.Close();
 
@@ -1424,9 +1680,106 @@ public partial class MainWindow : Window
         stackPanel.Children.Add(versionText);
         stackPanel.Children.Add(okButton);
 
-        dialog.Content = stackPanel;
+        Grid.SetRow(stackPanel, 1);
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(stackPanel);
+
+        dialog.Content = outerGrid;
 
         await dialog.ShowDialog(this);
+    }
+
+    private async void OnAccentColorButtonClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var dialog = CreateStyledDialog("Choose Theme Color", 500, 350);
+
+        var outerGrid = new Grid
+        {
+            RowDefinitions = new RowDefinitions("35,*")
+        };
+
+        var titleBar = CreateDialogTitleBar("Choose Theme Color", dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var mainPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(20),
+            Spacing = 20
+        };
+
+        var titleText = new TextBlock
+        {
+            Text = "Select your accent color:",
+            FontSize = 14,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#EAEAEA")),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
+
+        // Color presets with your new theme names
+        var colorGrid = new WrapPanel
+        {
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            MaxWidth = 450
+        };
+
+        var colors = new[]
+        {
+            ("#3F5E5A", "Typist Teal"),
+            ("#6B4E71", "Paperback Plum"),
+            ("#4A5D73", "Bluebook Blue"),
+            ("#4F6A5B", "Margin Moss"),
+            ("#6A3F3F", "Redline Rust"),
+            ("#51415C", "Midnight Manuscript"),
+            ("#6A5A3A", "Dog-Eared Dune"),
+            ("#3A3A3A", "Editor's Ebony")
+        };
+
+        foreach (var (colorHex, colorName) in colors)
+        {
+            var colorButton = new Button
+            {
+                Width = 100,
+                Height = 70,
+                Margin = new Avalonia.Thickness(5),
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(colorHex)),
+                Content = colorName,
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")),
+                FontSize = 11,
+                CornerRadius = new CornerRadius(6),
+                BorderThickness = new Avalonia.Thickness(2),
+                BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#555555"))
+            };
+
+            var capturedColor = colorHex;
+            colorButton.Click += (s, args) =>
+            {
+                _accentColor = capturedColor;
+                ApplyAccentColor();
+                SavePreferences();
+                dialog.Close();
+            };
+
+            colorGrid.Children.Add(colorButton);
+        }
+
+        mainPanel.Children.Add(titleText);
+        mainPanel.Children.Add(colorGrid);
+
+        Grid.SetRow(mainPanel, 1);
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(mainPanel);
+
+        dialog.Content = outerGrid;
+
+        await dialog.ShowDialog(this);
+    }
+
+    private void OnCustomizeAccentColorClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        // Redirect to the new color picker
+        OnAccentColorButtonClicked(sender, e);
     }
 
     private async void OnManuscriptNameDoubleTapped(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -1454,21 +1807,28 @@ public partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowRenameManuscriptDialog()
     {
-        var dialog = new Window
+        var dialog = CreateStyledDialog("Rename Manuscript", 400, 185);
+
+        var outerGrid = new Grid
         {
-            Title = "Rename Manuscript",
-            Width = 400,
-            Height = 150,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
+            RowDefinitions = new RowDefinitions("35,*")
+        };
+
+        var titleBar = CreateDialogTitleBar("Rename Manuscript", dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var contentPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(20)
         };
 
         var textBox = new TextBox
         {
             Text = _manuscript.Name,
-            Width = 350,
             Margin = new Avalonia.Thickness(0, 0, 0, 20)
         };
+
+        ApplyAccentToTextBox(textBox);
 
         var buttonPanel = new StackPanel
         {
@@ -1477,17 +1837,18 @@ public partial class MainWindow : Window
             Spacing = 10
         };
 
-        var okButton = new Button
-        {
-            Content = "OK",
-            Width = 80,
-            Margin = new Avalonia.Thickness(0, 0, 10, 0)
-        };
+        var okButton = CreateAccentButton("OK", 80);
+        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
             Content = "Cancel",
-            Width = 80
+            Width = 80,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+            Foreground = Avalonia.Media.Brushes.White,
+            BorderThickness = new Avalonia.Thickness(0),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Avalonia.Thickness(12, 6)
         };
 
         okButton.Click += (s, e) =>
@@ -1547,14 +1908,15 @@ public partial class MainWindow : Window
         buttonPanel.Children.Add(okButton);
         buttonPanel.Children.Add(cancelButton);
 
-        var panel = new StackPanel
-        {
-            Margin = new Avalonia.Thickness(20)
-        };
-        panel.Children.Add(textBox);
-        panel.Children.Add(buttonPanel);
+        contentPanel.Children.Add(textBox);
+        contentPanel.Children.Add(buttonPanel);
 
-        dialog.Content = panel;
+        Grid.SetRow(contentPanel, 1);
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(contentPanel);
+
+        dialog.Content = outerGrid;
 
         textBox.AttachedToVisualTree += (s, e) =>
         {
@@ -1569,9 +1931,30 @@ public partial class MainWindow : Window
     {
         if (DocumentList.SelectedItem is Document doc)
         {
+            // Clear previous selection background
+            var listBox = this.FindControl<ListBox>("DocumentList");
+            if (listBox != null)
+            {
+                for (int i = 0; i < _manuscript.Documents.Count; i++)
+                {
+                    var container = listBox.ContainerFromIndex(i);
+                    if (container is Control control)
+                    {
+                        var itemBorder = FindItemBorder(control);
+                        if (itemBorder != null)
+                        {
+                            itemBorder.Background = Avalonia.Media.Brushes.Transparent;
+                        }
+                    }
+                }
+            }
+
             _activeDocument = doc;
             _manuscript.LastOpenDocumentId = doc.Id;
             Editor.Text = doc.Text;
+
+            // Apply accent color to selected document
+            UpdateSelectedDocumentColor();
         }
     }
 
@@ -1628,40 +2011,48 @@ public partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowRenameDialog(Document doc)
     {
-        var dialog = new Window
+        var dialog = CreateStyledDialog("Rename Document", 350, 155);
+
+        var outerGrid = new Grid
         {
-            Title = "Rename Document",
-            Width = 350,
-            Height = 120,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
+            RowDefinitions = new RowDefinitions("35,*")
+        };
+
+        var titleBar = CreateDialogTitleBar("Rename Document", dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var contentPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(20)
         };
 
         var textBox = new TextBox
         {
             Text = doc.Title,
-            Margin = new Avalonia.Thickness(20, 20, 20, 10),
+            Margin = new Avalonia.Thickness(0, 0, 0, 10),
             Watermark = "Document title"
         };
+
+        ApplyAccentToTextBox(textBox);
 
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right,
-            Margin = new Avalonia.Thickness(20, 0, 20, 20)
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
         };
 
-        var okButton = new Button
-        {
-            Content = "OK",
-            Width = 80,
-            Margin = new Avalonia.Thickness(0, 0, 10, 0)
-        };
+        var okButton = CreateAccentButton("OK", 80);
+        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
             Content = "Cancel",
-            Width = 80
+            Width = 80,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+            Foreground = Avalonia.Media.Brushes.White,
+            BorderThickness = new Avalonia.Thickness(0),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Avalonia.Thickness(12, 6)
         };
 
         okButton.Click += (s, e) =>
@@ -1690,11 +2081,15 @@ public partial class MainWindow : Window
         buttonPanel.Children.Add(okButton);
         buttonPanel.Children.Add(cancelButton);
 
-        var panel = new StackPanel();
-        panel.Children.Add(textBox);
-        panel.Children.Add(buttonPanel);
+        contentPanel.Children.Add(textBox);
+        contentPanel.Children.Add(buttonPanel);
 
-        dialog.Content = panel;
+        Grid.SetRow(contentPanel, 1);
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(contentPanel);
+
+        dialog.Content = outerGrid;
 
         textBox.AttachedToVisualTree += (s, e) =>
         {
@@ -1733,14 +2128,15 @@ public partial class MainWindow : Window
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
         {
-            var dialog = new Window
+            var dialog = CreateStyledDialog("Delete Document", 400, 185);
+
+            var outerGrid = new Grid
             {
-                Title = "Delete Document",
-                Width = 400,
-                Height = 150,
-                WindowStartupLocation = WindowStartupLocation.CenterOwner,
-                CanResize = false
+                RowDefinitions = new RowDefinitions("35,*")
             };
+
+            var titleBar = CreateDialogTitleBar("Delete Document", dialog);
+            Grid.SetRow(titleBar, 0);
 
             var stackPanel = new StackPanel
             {
@@ -1753,7 +2149,8 @@ public partial class MainWindow : Window
                 Text = $"Are you sure you want to delete '{doc.Title}'?",
                 FontSize = 14,
                 TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                Foreground = Avalonia.Media.Brushes.White
             };
 
             var buttonPanel = new StackPanel
@@ -1767,13 +2164,22 @@ public partial class MainWindow : Window
             {
                 Content = "Delete",
                 Width = 100,
-                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D32F2F"))
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D32F2F")),
+                Foreground = Avalonia.Media.Brushes.White,
+                BorderThickness = new Avalonia.Thickness(0),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Avalonia.Thickness(12, 6)
             };
 
             var cancelButton = new Button
             {
                 Content = "Cancel",
-                Width = 100
+                Width = 100,
+                Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+                Foreground = Avalonia.Media.Brushes.White,
+                BorderThickness = new Avalonia.Thickness(0),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Avalonia.Thickness(12, 6)
             };
 
             confirmButton.Click += (s, args) =>
@@ -1812,7 +2218,12 @@ public partial class MainWindow : Window
             stackPanel.Children.Add(messageText);
             stackPanel.Children.Add(buttonPanel);
 
-            dialog.Content = stackPanel;
+            Grid.SetRow(stackPanel, 1);
+
+            outerGrid.Children.Add(titleBar);
+            outerGrid.Children.Add(stackPanel);
+
+            dialog.Content = outerGrid;
 
             await dialog.ShowDialog(this);
         }
@@ -1971,14 +2382,15 @@ public partial class MainWindow : Window
         if (_activeDocument == null)
             return;
 
-        var dialog = new Window
+        var dialog = CreateStyledDialog("Set Word Goal", 350, 175);
+
+        var outerGrid = new Grid
         {
-            Title = "Set Word Goal",
-            Width = 350,
-            Height = 140,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
+            RowDefinitions = new RowDefinitions("35,*")
         };
+
+        var titleBar = CreateDialogTitleBar("Set Word Goal", dialog);
+        Grid.SetRow(titleBar, 0);
 
         var stackPanel = new StackPanel
         {
@@ -1988,7 +2400,8 @@ public partial class MainWindow : Window
         var label = new TextBlock
         {
             Text = "Enter your word count goal:",
-            Margin = new Avalonia.Thickness(0, 0, 0, 10)
+            Margin = new Avalonia.Thickness(0, 0, 0, 10),
+            Foreground = Avalonia.Media.Brushes.White
         };
 
         var textBox = new TextBox
@@ -1998,23 +2411,26 @@ public partial class MainWindow : Window
             Margin = new Avalonia.Thickness(0, 0, 0, 10)
         };
 
+        ApplyAccentToTextBox(textBox);
+
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
         };
 
-        var okButton = new Button
-        {
-            Content = "OK",
-            Width = 80,
-            Margin = new Avalonia.Thickness(0, 0, 10, 0)
-        };
+        var okButton = CreateAccentButton("OK", 80);
+        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
             Content = "Cancel",
-            Width = 80
+            Width = 80,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+            Foreground = Avalonia.Media.Brushes.White,
+            BorderThickness = new Avalonia.Thickness(0),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Avalonia.Thickness(12, 6)
         };
 
         okButton.Click += (s, args) =>
@@ -2048,7 +2464,12 @@ public partial class MainWindow : Window
         stackPanel.Children.Add(textBox);
         stackPanel.Children.Add(buttonPanel);
 
-        dialog.Content = stackPanel;
+        Grid.SetRow(stackPanel, 1);
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(stackPanel);
+
+        dialog.Content = outerGrid;
 
         textBox.AttachedToVisualTree += (s, args) =>
         {
@@ -2158,7 +2579,7 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OnDocumentPointerReleased(object? sender, PointerReleasedEventArgs e)
+    private async void OnDocumentPointerReleased(object? sender, PointerReleasedEventArgs e)
     {
         var trashZone = this.FindControl<Border>("TrashZone");
 
@@ -2167,28 +2588,106 @@ public partial class MainWindow : Window
             // Check if dropped on trash zone
             if (_isOverTrash)
             {
-                // Delete the document
-                _manuscript.Documents.Remove(_draggedDocument);
+                // Show confirmation dialog before deleting
+                var dialog = CreateStyledDialog("Delete Document", 400, 185);
 
-                // Update active document if needed
-                if (_activeDocument == _draggedDocument)
+                var outerGrid = new Grid
                 {
-                    if (_manuscript.Documents.Count > 0)
-                    {
-                        _activeDocument = _manuscript.Documents[0];
-                        DocumentList.SelectedItem = _activeDocument;
-                        Editor.Text = _activeDocument.Text;
-                    }
-                    else
-                    {
-                        _activeDocument = null;
-                        Editor.Text = string.Empty;
-                    }
-                }
+                    RowDefinitions = new RowDefinitions("35,*")
+                };
 
-                _storage.SaveManuscript(_manuscript);
+                var titleBar = CreateDialogTitleBar("Delete Document", dialog);
+                Grid.SetRow(titleBar, 0);
 
-                // Reset trash zone background
+                var stackPanel = new StackPanel
+                {
+                    Margin = new Avalonia.Thickness(20),
+                    Spacing = 20
+                };
+
+                var messageText = new TextBlock
+                {
+                    Text = $"Are you sure you want to delete '{_draggedDocument.Title}'?",
+                    FontSize = 14,
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    Foreground = Avalonia.Media.Brushes.White
+                };
+
+                var buttonPanel = new StackPanel
+                {
+                    Orientation = Avalonia.Layout.Orientation.Horizontal,
+                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                    Spacing = 10
+                };
+
+                var confirmButton = new Button
+                {
+                    Content = "Delete",
+                    Width = 100,
+                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D32F2F")),
+                    Foreground = Avalonia.Media.Brushes.White,
+                    BorderThickness = new Avalonia.Thickness(0),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Avalonia.Thickness(12, 6)
+                };
+
+                var cancelButton = new Button
+                {
+                    Content = "Cancel",
+                    Width = 100,
+                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+                    Foreground = Avalonia.Media.Brushes.White,
+                    BorderThickness = new Avalonia.Thickness(0),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Avalonia.Thickness(12, 6)
+                };
+
+                var docToDelete = _draggedDocument; // Capture for the lambda
+
+                confirmButton.Click += (s, args) =>
+                {
+                    // Delete the document
+                    _manuscript.Documents.Remove(docToDelete);
+
+                    // Update active document if needed
+                    if (_activeDocument == docToDelete)
+                    {
+                        if (_manuscript.Documents.Count > 0)
+                        {
+                            _activeDocument = _manuscript.Documents[0];
+                            DocumentList.SelectedItem = _activeDocument;
+                            Editor.Text = _activeDocument.Text;
+                        }
+                        else
+                        {
+                            _activeDocument = null;
+                            Editor.Text = string.Empty;
+                        }
+                    }
+
+                    _storage.SaveManuscript(_manuscript);
+                    dialog.Close();
+                };
+
+                cancelButton.Click += (s, args) => dialog.Close();
+
+                buttonPanel.Children.Add(confirmButton);
+                buttonPanel.Children.Add(cancelButton);
+
+                stackPanel.Children.Add(messageText);
+                stackPanel.Children.Add(buttonPanel);
+
+                Grid.SetRow(stackPanel, 1);
+
+                outerGrid.Children.Add(titleBar);
+                outerGrid.Children.Add(stackPanel);
+
+                dialog.Content = outerGrid;
+
+                await dialog.ShowDialog(this);
+
+                // Reset trash zone background after dialog closes
                 if (trashZone != null)
                 {
                     trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
@@ -2263,7 +2762,7 @@ public partial class MainWindow : Window
                 var itemBorder = FindItemBorder(control);
                 if (itemBorder != null)
                 {
-                    itemBorder.BorderBrush = DropIndicatorBrush;
+                    itemBorder.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
                     itemBorder.BorderThickness = DropIndicatorTopThickness;
                 }
             }
@@ -2277,7 +2776,7 @@ public partial class MainWindow : Window
                 var itemBorder = FindItemBorder(control);
                 if (itemBorder != null)
                 {
-                    itemBorder.BorderBrush = DropIndicatorBrush;
+                    itemBorder.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
                     itemBorder.BorderThickness = DropIndicatorTopThickness;
                 }
             }
@@ -2291,7 +2790,7 @@ public partial class MainWindow : Window
                 var itemBorder = FindItemBorder(control);
                 if (itemBorder != null)
                 {
-                    itemBorder.BorderBrush = DropIndicatorBrush;
+                    itemBorder.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
                     itemBorder.BorderThickness = DropIndicatorBottomThickness;
                 }
             }
