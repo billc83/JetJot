@@ -37,6 +37,7 @@ namespace JetJot
                     Id = doc.Id,
                     Title = doc.Title,
                     WordGoal = doc.WordGoal,
+                    IsLocked = doc.IsLocked,
                     Order = i
                 });
 
@@ -77,7 +78,8 @@ namespace JetJot
                 {
                     Id = docManifest.Id,
                     Title = docManifest.Title,
-                    WordGoal = docManifest.WordGoal
+                    WordGoal = docManifest.WordGoal,
+                    IsLocked = docManifest.IsLocked
                 };
 
                 // Load text from file

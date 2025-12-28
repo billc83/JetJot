@@ -54,7 +54,6 @@ public partial class MainWindow : Window
 
     // Typewriter mode state
     private bool _isTypewriterMode = false;
-    private const int TypewriterCenteringLineThreshold = 10;
 
     // Accent color
     private string _accentColor = "#4A5D73";
@@ -211,6 +210,27 @@ public partial class MainWindow : Window
         // Global keyboard shortcuts
         this.KeyDown += OnWindowKeyDown;
 
+        // Set up typewriter mode spacer
+        var editorScrollViewer = this.FindControl<ScrollViewer>("EditorScrollViewer");
+        if (editorScrollViewer != null)
+        {
+            editorScrollViewer.PropertyChanged += (s, e) =>
+            {
+                if (e.Property.Name == nameof(ScrollViewer.Viewport))
+                {
+                    UpdateTypewriterSpacer();
+                }
+            };
+        }
+
+        Editor.PropertyChanged += (s, e) =>
+        {
+            if (e.Property.Name == nameof(TextBox.Bounds))
+            {
+                UpdateTypewriterSpacer();
+            }
+        };
+
         // Save on window close
         this.Closing += OnWindowClosing;
     }
@@ -245,6 +265,9 @@ public partial class MainWindow : Window
         {
             _storage.SaveManuscript(_manuscript);
         }
+
+        // Save user preferences on close to ensure accent color and other settings persist
+        SavePreferences();
     }
 
     private async void OnNewManuscriptMenuClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -284,7 +307,6 @@ public partial class MainWindow : Window
         };
 
         var okButton = CreateAccentButton("Create", 80);
-        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
@@ -1011,8 +1033,8 @@ public partial class MainWindow : Window
         var outerGrid = this.FindControl<Grid>("MainOuterGrid");
         if (outerGrid != null && outerGrid.RowDefinitions.Count >= 3)
         {
-            outerGrid.RowDefinitions[0].Height = new GridLength(40); // Top row
-            outerGrid.RowDefinitions[2].Height = new GridLength(40); // Bottom row
+            outerGrid.RowDefinitions[0].Height = new GridLength(40); // Top row (title bar)
+            outerGrid.RowDefinitions[2].Height = GridLength.Auto; // Bottom row (footer) - Auto so it collapses when hidden
         }
 
         // Restore previous state
@@ -1031,7 +1053,7 @@ public partial class MainWindow : Window
             }
             if (mainGrid.RowDefinitions.Count >= 2)
             {
-                mainGrid.RowDefinitions[1].Height = new GridLength(40); // Footer row
+                mainGrid.RowDefinitions[1].Height = GridLength.Auto; // Footer row - Auto so it collapses when hidden
             }
         }
 
@@ -1082,6 +1104,9 @@ public partial class MainWindow : Window
         _isTypewriterMode = !_isTypewriterMode;
         CheckTypewriterMode.IsChecked = _isTypewriterMode;
 
+        // Update spacer height
+        UpdateTypewriterSpacer();
+
         if (_isTypewriterMode)
         {
             // Center the current line
@@ -1092,17 +1117,37 @@ public partial class MainWindow : Window
         Editor.Focus();
     }
 
+    private void UpdateTypewriterSpacer()
+    {
+        var topSpacer = this.FindControl<Border>("TypewriterTopSpacer");
+        var bottomSpacer = this.FindControl<Border>("TypewriterBottomSpacer");
+        var scrollViewer = this.FindControl<ScrollViewer>("EditorScrollViewer");
+
+        if (topSpacer == null || bottomSpacer == null || scrollViewer == null) return;
+
+        // When typewriter mode is on, add top and bottom padding equal to half the viewport height
+        // This allows scrolling past both start and end so any line can be centered
+        if (_isTypewriterMode && scrollViewer.Viewport.Height > 0)
+        {
+            var spacerHeight = scrollViewer.Viewport.Height / 2;
+            topSpacer.Height = spacerHeight;
+            bottomSpacer.Height = spacerHeight;
+        }
+        else
+        {
+            topSpacer.Height = 0;
+            bottomSpacer.Height = 0;
+        }
+    }
 
     private void CenterCurrentLine()
     {
         if (!_isTypewriterMode) return;
 
-        // Find the ScrollViewer inside the Editor TextBox
-        var scrollViewer = Editor.GetVisualDescendants()
-            .OfType<ScrollViewer>()
-            .FirstOrDefault();
+        var scrollViewer = this.FindControl<ScrollViewer>("EditorScrollViewer");
+        var topSpacer = this.FindControl<Border>("TypewriterTopSpacer");
 
-        if (scrollViewer == null) return;
+        if (scrollViewer == null || topSpacer == null) return;
 
         // Calculate the line height (approximate)
         var lineHeight = Editor.FontSize * 1.35; // Typical line height multiplier
@@ -1113,22 +1158,16 @@ public partial class MainWindow : Window
 
         var linesBeforeCaret = text.Substring(0, Math.Min(caretIndex, text.Length))
             .Count(c => c == '\n');
-        var totalLines = 1 + text.Count(c => c == '\n');
-        var linesAfterCaret = (totalLines - 1) - linesBeforeCaret;
-
-        // Only center when we're far enough from the start and end.
-        if (linesBeforeCaret < TypewriterCenteringLineThreshold ||
-            linesAfterCaret < TypewriterCenteringLineThreshold)
-        {
-            return;
-        }
 
         // Calculate the Y position of the current line
-        var currentLineY = linesBeforeCaret * lineHeight;
+        // This includes the top spacer height since the TextBox is in Grid.Row="1"
+        var currentLineY = topSpacer.Height + (linesBeforeCaret * lineHeight);
 
         // Calculate the center position (middle of the viewport)
         var viewportHeight = scrollViewer.Viewport.Height;
         var targetOffset = currentLineY - (viewportHeight / 2) + (lineHeight / 2);
+
+        // The extent height now includes both top and bottom spacers
         var maxOffset = Math.Max(0, scrollViewer.Extent.Height - viewportHeight);
 
         // Scroll to center the line
@@ -1838,7 +1877,6 @@ public partial class MainWindow : Window
         };
 
         var okButton = CreateAccentButton("OK", 80);
-        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
@@ -2041,11 +2079,10 @@ public partial class MainWindow : Window
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
         };
 
         var okButton = CreateAccentButton("OK", 80);
-        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
@@ -2159,10 +2196,62 @@ public partial class MainWindow : Window
         }
     }
 
+    private async System.Threading.Tasks.Task ShowLockedDocumentDialog(string documentTitle)
+    {
+        var dialog = CreateStyledDialog("Cannot Delete Locked Document", 450, 185);
+
+        var outerGrid = new Grid
+        {
+            RowDefinitions = new RowDefinitions("35,*")
+        };
+
+        var titleBar = CreateDialogTitleBar("Cannot Delete Locked Document", dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var stackPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(20),
+            Spacing = 20
+        };
+
+        var messageText = new TextBlock
+        {
+            Text = $"'{documentTitle}' is locked and cannot be deleted.\n\nPlease unlock it first to delete.",
+            FontSize = 14,
+            TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+            TextAlignment = Avalonia.Media.TextAlignment.Center,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Foreground = Avalonia.Media.Brushes.White
+        };
+
+        var okButton = CreateAccentButton("OK", 100);
+        okButton.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+        okButton.Click += (s, e) => dialog.Close();
+
+        stackPanel.Children.Add(messageText);
+        stackPanel.Children.Add(okButton);
+
+        Grid.SetRow(stackPanel, 1);
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(stackPanel);
+
+        dialog.Content = outerGrid;
+
+        await dialog.ShowDialog(this);
+    }
+
     private async void OnDeleteMenuClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
         {
+            // Check if document is locked
+            if (doc.IsLocked)
+            {
+                await ShowLockedDocumentDialog(doc.Title);
+                return;
+            }
+
             var dialog = CreateStyledDialog("Delete Document", 400, 185);
 
             var outerGrid = new Grid
@@ -2451,11 +2540,10 @@ public partial class MainWindow : Window
         var buttonPanel = new StackPanel
         {
             Orientation = Avalonia.Layout.Orientation.Horizontal,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Right
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
         };
 
         var okButton = CreateAccentButton("OK", 80);
-        okButton.Margin = new Avalonia.Thickness(0, 0, 10, 0);
 
         var cancelButton = new Button
         {
