@@ -58,6 +58,12 @@ public partial class MainWindow : Window
     // Accent color
     private string _accentColor = "#4A5D73";
 
+    // Currently selected font family name
+    private string _currentFontFamily = "IBM Plex Sans";
+
+    // Flag to prevent font change events during initialization
+    private bool _isLoadingPreferences = false;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -109,9 +115,18 @@ public partial class MainWindow : Window
             };
         }
 
-        // Try to find an existing manuscript folder (look for any manuscript.json)
+        // Try to load the last open manuscript from preferences
         string? existingManuscriptFolder = null;
-        if (System.IO.Directory.Exists(jetJotRoot))
+        var startupPreferences = LoadPreferences();
+
+        // First, check if we have a last open manuscript path in preferences
+        if (!string.IsNullOrEmpty(startupPreferences.LastOpenManuscriptPath) &&
+            System.IO.File.Exists(System.IO.Path.Combine(startupPreferences.LastOpenManuscriptPath, "manuscript.json")))
+        {
+            existingManuscriptFolder = startupPreferences.LastOpenManuscriptPath;
+        }
+        // Otherwise, find any existing manuscript folder
+        else if (System.IO.Directory.Exists(jetJotRoot))
         {
             var subDirs = System.IO.Directory.GetDirectories(jetJotRoot);
             foreach (var dir in subDirs)
@@ -185,6 +200,9 @@ public partial class MainWindow : Window
         // New document button
         NewDocumentButton.Click += OnNewDocumentClicked;
 
+        // Logo easter egg - plane flies away on double click
+        LogoImage.DoubleTapped += OnLogoDoubleTapped;
+
         // Font selectors
         FontFamilyComboBox.SelectionChanged += OnFontFamilyChanged;
         FontSizeComboBox.SelectionChanged += OnFontSizeChanged;
@@ -207,11 +225,27 @@ public partial class MainWindow : Window
         // Load and apply user preferences
         LoadAndApplyPreferences();
 
+        // Set initial focus to editor
+        Editor.Focus();
+
+        // Keep editor focused - refocus when clicking in editor area
+        // Set up typewriter mode spacer
+        var editorScrollViewer = this.FindControl<ScrollViewer>("EditorScrollViewer");
+        if (editorScrollViewer != null)
+        {
+            editorScrollViewer.PointerPressed += (s, e) =>
+            {
+                // Only refocus if clicking in empty space (not on the TextBox itself)
+                if (e.Source == editorScrollViewer || e.Source is Grid)
+                {
+                    Editor.Focus();
+                }
+            };
+        }
+
         // Global keyboard shortcuts
         this.KeyDown += OnWindowKeyDown;
 
-        // Set up typewriter mode spacer
-        var editorScrollViewer = this.FindControl<ScrollViewer>("EditorScrollViewer");
         if (editorScrollViewer != null)
         {
             editorScrollViewer.PropertyChanged += (s, e) =>
@@ -623,6 +657,9 @@ public partial class MainWindow : Window
 
             // Add to recents
             AddToRecents(_manuscript.FolderPath, _manuscript.Name);
+
+            // Save preferences to remember this manuscript for next launch
+            SavePreferences();
         }
         catch (Exception ex)
         {
@@ -864,8 +901,25 @@ public partial class MainWindow : Window
             }
         }
 
+        UpdateTitleBarText();
         SavePreferences();
         Editor.Focus();
+    }
+
+    private void UpdateTitleBarText()
+    {
+        var titleBar = this.FindControl<TextBlock>("TitleBarText");
+        if (titleBar != null)
+        {
+            if (SidebarPanel.IsVisible)
+            {
+                titleBar.Text = "JetJot - Let Your Writing Fly";
+            }
+            else
+            {
+                titleBar.Text = $"JetJot - {_manuscript.Name}";
+            }
+        }
     }
 
     private void OnToggleFooter(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -885,6 +939,18 @@ public partial class MainWindow : Window
                 ExitSuperFocusMode();
             }
         }
+
+        SavePreferences();
+        Editor.Focus();
+    }
+
+    private void OnToggleThemedTitleBar(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        bool isThemed = !CheckThemedTitleBar.IsChecked ?? false;
+        CheckThemedTitleBar.IsChecked = isThemed;
+
+        // Reapply accent color to update title bar
+        ApplyAccentColor();
 
         SavePreferences();
         Editor.Focus();
@@ -939,6 +1005,7 @@ public partial class MainWindow : Window
             CheckFooter.IsChecked = _preFocusModeFooterVisible;
         }
 
+        UpdateTitleBarText();
         SavePreferences();
         Editor.Focus();
     }
@@ -1061,20 +1128,22 @@ public partial class MainWindow : Window
         var editorArea = this.FindControl<Border>("EditorAreaBorder");
         if (editorArea != null)
         {
-            editorArea.Padding = new Thickness(20);
+            editorArea.Padding = new Thickness(0);
         }
 
         // Restore corner radius
         var editorInner = this.FindControl<Border>("EditorInnerBorder");
         if (editorInner != null)
         {
-            editorInner.CornerRadius = new CornerRadius(6);
+            editorInner.CornerRadius = new CornerRadius(0);
         }
 
         // Update checkboxes to match restored state
         CheckToolbar.IsChecked = _preSuperFocusModeToolbarVisible;
         CheckSidebar.IsChecked = _preSuperFocusModeSidebarVisible;
         CheckFooter.IsChecked = _preSuperFocusModeFooterVisible;
+
+        UpdateTitleBarText();
     }
 
     private async System.Threading.Tasks.Task ShowSuperFocusHintAsync()
@@ -1193,9 +1262,11 @@ public partial class MainWindow : Window
             ShowSidebar = SidebarPanel.IsVisible,
             ShowFooter = FooterPanel.IsVisible,
             TypewriterMode = _isTypewriterMode,
-            FontFamily = Editor.FontFamily?.ToString() ?? "IBM Plex Sans",
+            FontFamily = _currentFontFamily,
             FontSize = (int)Editor.FontSize,
-            AccentColor = _accentColor
+            AccentColor = _accentColor,
+            ThemedTitleBar = CheckThemedTitleBar.IsChecked ?? true,
+            LastOpenManuscriptPath = _manuscript.FolderPath
         };
 
         var dir = System.IO.Path.GetDirectoryName(_preferencesFilePath);
@@ -1241,6 +1312,8 @@ public partial class MainWindow : Window
 
     private void LoadAndApplyPreferences()
     {
+        _isLoadingPreferences = true;
+
         var preferences = LoadPreferences();
 
         // Apply toolbar preference
@@ -1270,6 +1343,7 @@ public partial class MainWindow : Window
         }
 
         // Apply font preferences
+        _currentFontFamily = preferences.FontFamily;
         Editor.FontFamily = new Avalonia.Media.FontFamily(preferences.FontFamily);
         Editor.FontSize = preferences.FontSize;
 
@@ -1277,23 +1351,45 @@ public partial class MainWindow : Window
         SetFontFamilyComboBox(preferences.FontFamily);
         SetFontSizeComboBox(preferences.FontSize);
 
+        // Apply themed title bar preference
+        CheckThemedTitleBar.IsChecked = preferences.ThemedTitleBar;
+
         // Apply accent color preference
         _accentColor = preferences.AccentColor;
         ApplyAccentColor();
+
+        _isLoadingPreferences = false;
     }
 
     private void ApplyAccentColor()
     {
         var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
 
-        // Update the dynamic resource so all styled elements update automatically
-        // This will update: TextBox focus borders, ComboBox selections, CheckBox checked states, etc.
-        this.Resources["AccentBrush"] = accentBrush;
+        // For very dark accent colors (like Editor's Ebony #3A3A3A), use a lighter color for the cursor
+        // to ensure it's visible against the dark editor background
+        var caretBrush = accentBrush;
+        if (_accentColor.Equals("#3A3A3A", StringComparison.OrdinalIgnoreCase))
+        {
+            caretBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
+        }
 
-        // 1. Title Bar
+        // Update the dynamic resources
+        this.Resources["AccentBrush"] = accentBrush;
+        this.Resources["CaretBrush"] = caretBrush;
+
+        // 1. Title Bar - only apply theme if preference is enabled
         if (this.FindControl<Border>("TitleBarPanel") is Border titleBar)
         {
-            titleBar.Background = accentBrush;
+            bool themedTitleBar = CheckThemedTitleBar?.IsChecked ?? true;
+            if (themedTitleBar)
+            {
+                titleBar.Background = accentBrush;
+            }
+            else
+            {
+                // Use default dark gray when themed title bar is disabled
+                titleBar.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+            }
         }
 
         // 2. New Document Button
@@ -1302,10 +1398,18 @@ public partial class MainWindow : Window
             newDocBtn.Background = accentBrush;
         }
 
-        // 3. Progress Bar
+        // 3. Progress Bar - use white for Editor's Ebony (no theme)
         if (this.FindControl<ProgressBar>("WordProgressBar") is ProgressBar progressBar)
         {
-            progressBar.Foreground = accentBrush;
+            if (_accentColor.Equals("#3A3A3A", StringComparison.OrdinalIgnoreCase))
+            {
+                // Use white for Editor's Ebony theme (less distracting)
+                progressBar.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
+            }
+            else
+            {
+                progressBar.Foreground = accentBrush;
+            }
         }
 
         // 4. Toolbar bottom border (horizontal accent)
@@ -1320,13 +1424,32 @@ public partial class MainWindow : Window
             sidebar.BorderBrush = accentBrush;
         }
 
-        // 6. Accent Color Button in toolbar
+        // 6. Manuscript divider line (themed accent line)
+        if (this.FindControl<Border>("ManuscriptDivider") is Border divider)
+        {
+            divider.Background = accentBrush;
+        }
+
+        // 7. Accent Color Button in toolbar
         if (this.FindControl<Button>("AccentColorButton") is Button accentButton)
         {
             accentButton.Background = accentBrush;
         }
 
-        // 7. Update selected document background
+        // 8. Word count text - make it visible for dark themes
+        if (this.FindControl<TextBlock>("WordCountText") is TextBlock wordCountText)
+        {
+            if (_accentColor.Equals("#3A3A3A", StringComparison.OrdinalIgnoreCase))
+            {
+                wordCountText.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
+            }
+            else
+            {
+                wordCountText.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
+            }
+        }
+
+        // 9. Update selected document background
         UpdateSelectedDocumentColor();
     }
 
@@ -2034,6 +2157,64 @@ public partial class MainWindow : Window
         Editor.Text = newDoc.Text;
     }
 
+    private void OnManuscriptNamePointerEntered(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        var textBlock = sender as TextBlock;
+        if (textBlock != null)
+        {
+            textBlock.Foreground = this.FindResource("AccentBrush") as Avalonia.Media.IBrush;
+        }
+    }
+
+    private void OnManuscriptNamePointerExited(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        var textBlock = sender as TextBlock;
+        if (textBlock != null)
+        {
+            textBlock.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
+        }
+    }
+
+    private async void OnLogoDoubleTapped(object? sender, Avalonia.Input.TappedEventArgs e)
+    {
+        // Easter egg: Make the plane fly away!
+        var logo = this.FindControl<Avalonia.Controls.Image>("LogoImage");
+        if (logo?.RenderTransform is not Avalonia.Media.TranslateTransform transform)
+            return;
+
+        // Animate the plane flying up and to the right using a simple timer-based animation
+        var duration = 1500; // 1.5 seconds
+        var steps = 60;
+        var delay = duration / steps;
+
+        // Fly away animation
+        for (int i = 0; i <= steps; i++)
+        {
+            var progress = (double)i / steps;
+            transform.X = progress * 500;  // Move right
+            transform.Y = progress * -300; // Move up
+            logo.Opacity = 1.0 - progress;  // Fade out
+            await System.Threading.Tasks.Task.Delay(delay);
+        }
+
+        // Wait a moment for mourning
+        await System.Threading.Tasks.Task.Delay(1000);
+
+        // Reset position
+        transform.X = 0;
+        transform.Y = 0;
+
+        // Fade back in
+        var fadeSteps = 40;
+        var fadeDelay = 800 / fadeSteps;
+        for (int i = 0; i <= fadeSteps; i++)
+        {
+            var progress = (double)i / fadeSteps;
+            logo.Opacity = progress;
+            await System.Threading.Tasks.Task.Delay(fadeDelay);
+        }
+    }
+
     private async void OnDocumentItemDoubleTapped(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (sender is Border border && border.DataContext is Document doc)
@@ -2355,10 +2536,28 @@ public partial class MainWindow : Window
 
     private void OnFontFamilyChanged(object? sender, SelectionChangedEventArgs e)
     {
+        // Skip if we're loading preferences to avoid conflicts
+        if (_isLoadingPreferences)
+            return;
+
         if (FontFamilyComboBox.SelectedItem is ComboBoxItem item &&
             item.Content is string fontName)
         {
-            Editor.FontFamily = new Avalonia.Media.FontFamily(fontName);
+            _currentFontFamily = fontName;
+
+            // Apply the font
+            var newFontFamily = new Avalonia.Media.FontFamily(fontName);
+            Editor.FontFamily = newFontFamily;
+
+            // Debug: Print what font is actually being used
+            System.Diagnostics.Debug.WriteLine($"Font changed to: {fontName}");
+            System.Diagnostics.Debug.WriteLine($"Editor.FontFamily.Name: {Editor.FontFamily.Name}");
+            System.Diagnostics.Debug.WriteLine($"Editor.FontFamily.ToString(): {Editor.FontFamily.ToString()}");
+
+            // Force invalidation of the visual to ensure re-render
+            Editor.InvalidateVisual();
+            Editor.InvalidateMeasure();
+
             SavePreferences();
         }
     }
@@ -2711,109 +2910,165 @@ public partial class MainWindow : Window
             // Check if dropped on trash zone
             if (_isOverTrash)
             {
-                // Show confirmation dialog before deleting
-                var dialog = CreateStyledDialog("Delete Document", 400, 185);
-
-                var outerGrid = new Grid
+                // Check if document is locked
+                if (_draggedDocument.IsLocked)
                 {
-                    RowDefinitions = new RowDefinitions("35,*")
-                };
+                    // Show error dialog for locked document
+                    var errorDialog = CreateStyledDialog("Cannot Delete", 400, 160);
 
-                var titleBar = CreateDialogTitleBar("Delete Document", dialog);
-                Grid.SetRow(titleBar, 0);
-
-                var stackPanel = new StackPanel
-                {
-                    Margin = new Avalonia.Thickness(20),
-                    Spacing = 20
-                };
-
-                var messageText = new TextBlock
-                {
-                    Text = $"Are you sure you want to delete '{_draggedDocument.Title}'?",
-                    FontSize = 14,
-                    TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                    Foreground = Avalonia.Media.Brushes.White
-                };
-
-                var buttonPanel = new StackPanel
-                {
-                    Orientation = Avalonia.Layout.Orientation.Horizontal,
-                    HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
-                    Spacing = 10
-                };
-
-                var confirmButton = new Button
-                {
-                    Content = "Delete",
-                    Width = 100,
-                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D32F2F")),
-                    Foreground = Avalonia.Media.Brushes.White,
-                    BorderThickness = new Avalonia.Thickness(0),
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Avalonia.Thickness(12, 6)
-                };
-
-                var cancelButton = new Button
-                {
-                    Content = "Cancel",
-                    Width = 100,
-                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
-                    Foreground = Avalonia.Media.Brushes.White,
-                    BorderThickness = new Avalonia.Thickness(0),
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Avalonia.Thickness(12, 6)
-                };
-
-                var docToDelete = _draggedDocument; // Capture for the lambda
-
-                confirmButton.Click += (s, args) =>
-                {
-                    // Delete the document
-                    _manuscript.Documents.Remove(docToDelete);
-
-                    // Update active document if needed
-                    if (_activeDocument == docToDelete)
+                    var outerGrid = new Grid
                     {
-                        if (_manuscript.Documents.Count > 0)
-                        {
-                            _activeDocument = _manuscript.Documents[0];
-                            DocumentList.SelectedItem = _activeDocument;
-                            Editor.Text = _activeDocument.Text;
-                        }
-                        else
-                        {
-                            _activeDocument = null;
-                            Editor.Text = string.Empty;
-                        }
-                    }
+                        RowDefinitions = new RowDefinitions("35,*")
+                    };
 
-                    _storage.SaveManuscript(_manuscript);
-                    dialog.Close();
-                };
+                    var titleBar = CreateDialogTitleBar("Cannot Delete", errorDialog);
+                    Grid.SetRow(titleBar, 0);
 
-                cancelButton.Click += (s, args) => dialog.Close();
+                    var stackPanel = new StackPanel
+                    {
+                        Margin = new Avalonia.Thickness(20),
+                        Spacing = 20
+                    };
 
-                buttonPanel.Children.Add(confirmButton);
-                buttonPanel.Children.Add(cancelButton);
+                    var messageText = new TextBlock
+                    {
+                        Text = $"Cannot delete '{_draggedDocument.Title}' because it is locked. Unlock it first.",
+                        FontSize = 14,
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        Foreground = Avalonia.Media.Brushes.White
+                    };
 
-                stackPanel.Children.Add(messageText);
-                stackPanel.Children.Add(buttonPanel);
+                    var okButton = new Button
+                    {
+                        Content = "OK",
+                        Width = 100,
+                        Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor)),
+                        Foreground = Avalonia.Media.Brushes.White,
+                        BorderThickness = new Avalonia.Thickness(0),
+                        CornerRadius = new CornerRadius(4),
+                        Padding = new Avalonia.Thickness(12, 6),
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+                    };
 
-                Grid.SetRow(stackPanel, 1);
+                    okButton.Click += (s, args) => errorDialog.Close();
 
-                outerGrid.Children.Add(titleBar);
-                outerGrid.Children.Add(stackPanel);
+                    stackPanel.Children.Add(messageText);
+                    stackPanel.Children.Add(okButton);
 
-                dialog.Content = outerGrid;
+                    Grid.SetRow(stackPanel, 1);
+                    outerGrid.Children.Add(titleBar);
+                    outerGrid.Children.Add(stackPanel);
 
-                await dialog.ShowDialog(this);
-
-                // Reset trash zone background after dialog closes
-                if (trashZone != null)
+                    errorDialog.Content = outerGrid;
+                    await errorDialog.ShowDialog(this);
+                }
+                else
                 {
-                    trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+                    // Show confirmation dialog before deleting
+                    var dialog = CreateStyledDialog("Delete Document", 400, 185);
+
+                    var outerGrid = new Grid
+                    {
+                        RowDefinitions = new RowDefinitions("35,*")
+                    };
+
+                    var titleBar = CreateDialogTitleBar("Delete Document", dialog);
+                    Grid.SetRow(titleBar, 0);
+
+                    var stackPanel = new StackPanel
+                    {
+                        Margin = new Avalonia.Thickness(20),
+                        Spacing = 20
+                    };
+
+                    var messageText = new TextBlock
+                    {
+                        Text = $"Are you sure you want to delete '{_draggedDocument.Title}'?",
+                        FontSize = 14,
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        Foreground = Avalonia.Media.Brushes.White
+                    };
+
+                    var buttonPanel = new StackPanel
+                    {
+                        Orientation = Avalonia.Layout.Orientation.Horizontal,
+                        HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                        Spacing = 10
+                    };
+
+                    var confirmButton = new Button
+                    {
+                        Content = "Delete",
+                        Width = 100,
+                        Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#D32F2F")),
+                        Foreground = Avalonia.Media.Brushes.White,
+                        BorderThickness = new Avalonia.Thickness(0),
+                        CornerRadius = new CornerRadius(4),
+                        Padding = new Avalonia.Thickness(12, 6)
+                    };
+
+                    var cancelButton = new Button
+                    {
+                        Content = "Cancel",
+                        Width = 100,
+                        Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+                        Foreground = Avalonia.Media.Brushes.White,
+                        BorderThickness = new Avalonia.Thickness(0),
+                        CornerRadius = new CornerRadius(4),
+                        Padding = new Avalonia.Thickness(12, 6)
+                    };
+
+                    var docToDelete = _draggedDocument; // Capture for the lambda
+
+                    confirmButton.Click += (s, args) =>
+                    {
+                        // Delete the document
+                        _manuscript.Documents.Remove(docToDelete);
+
+                        // Update active document if needed
+                        if (_activeDocument == docToDelete)
+                        {
+                            if (_manuscript.Documents.Count > 0)
+                            {
+                                _activeDocument = _manuscript.Documents[0];
+                                DocumentList.SelectedItem = _activeDocument;
+                                Editor.Text = _activeDocument.Text;
+                            }
+                            else
+                            {
+                                _activeDocument = null;
+                                Editor.Text = string.Empty;
+                            }
+                        }
+
+                        _storage.SaveManuscript(_manuscript);
+                        dialog.Close();
+                    };
+
+                    cancelButton.Click += (s, args) => dialog.Close();
+
+                    buttonPanel.Children.Add(confirmButton);
+                    buttonPanel.Children.Add(cancelButton);
+
+                    stackPanel.Children.Add(messageText);
+                    stackPanel.Children.Add(buttonPanel);
+
+                    Grid.SetRow(stackPanel, 1);
+
+                    outerGrid.Children.Add(titleBar);
+                    outerGrid.Children.Add(stackPanel);
+
+                    dialog.Content = outerGrid;
+
+                    await dialog.ShowDialog(this);
+
+                    // Reset trash zone background after dialog closes
+                    if (trashZone != null)
+                    {
+                        trashZone.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+                    }
                 }
             }
             else if (_dropTargetIndex >= 0)
