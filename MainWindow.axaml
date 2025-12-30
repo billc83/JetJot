@@ -143,6 +143,11 @@
                                 <CheckBox x:Name="CheckFooter" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem x:Name="MenuShowSpellCheck" Header="Show Spell Check" Click="OnToggleSpellCheck">
+                            <MenuItem.Icon>
+                                <CheckBox x:Name="CheckSpellCheck" IsChecked="True" IsHitTestVisible="False"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <Separator/>
                         <MenuItem x:Name="MenuThemedTitleBar" Header="Themed Title Bar" Click="OnToggleThemedTitleBar">
                             <MenuItem.Icon>
@@ -226,7 +231,7 @@
             </Grid>
         </Border>
 
-        <Grid x:Name="MainGrid" Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" RowDefinitions="*,Auto">
+        <Grid x:Name="MainGrid" Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" RowDefinitions="*,Auto,Auto">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="240"/>
                 <ColumnDefinition Width="*"/>
@@ -394,7 +399,7 @@
                     CornerRadius="0"
                     Padding="0">
 
-                <Grid RowDefinitions="Auto,*">
+                <Grid RowDefinitions="Auto,*,Auto">
 
                     <!-- Formatting Toolbar -->
                     <Border x:Name="ToolbarPanel"
@@ -560,6 +565,24 @@
                         </ScrollViewer>
                     </Border>
 
+                    <!-- Spell Check Indicator -->
+                    <Button x:Name="SpellCheckIndicatorBar"
+                            Grid.Row="2"
+                            Background="Transparent"
+                            Padding="40,4,40,4"
+                            IsVisible="False"
+                            HorizontalAlignment="Right"
+                            BorderThickness="0"
+                            Cursor="Hand"
+                            HorizontalContentAlignment="Right">
+                        <TextBlock x:Name="SpellCheckIndicator"
+                                  Text=""
+                                  Foreground="#FF9800"
+                                  VerticalAlignment="Center"
+                                  FontSize="11"
+                                  ToolTip.Tip="Click to jump to next misspelled word"/>
+                    </Button>
+
                 </Grid>
 
             </Border>
@@ -569,7 +592,7 @@
         <!-- Footer -->
         <!-- ========================= -->
         <Border x:Name="FooterPanel"
-                Grid.Row="1"
+                Grid.Row="2"
                 Grid.Column="0"
                 Grid.ColumnSpan="2"
                 Background="#2D2D2D"

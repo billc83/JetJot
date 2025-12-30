@@ -68,6 +68,8 @@ public partial class MainWindow : Window
 
     // Spell checker
     private readonly SpellCheckerService _spellChecker = new();
+    private bool _showSpellCheck = true;
+    private int _currentSpellCheckIndex = -1;
 
     public MainWindow()
     {
@@ -226,6 +228,9 @@ public partial class MainWindow : Window
 
         // Set goal button
         SetGoalButton.Click += OnSetGoalClicked;
+
+        // Spell check indicator click
+        SpellCheckIndicatorBar.Click += OnSpellCheckIndicatorClicked;
 
         // Update word count initially
         UpdateWordCount();
@@ -955,6 +960,18 @@ public partial class MainWindow : Window
         Editor.Focus();
     }
 
+    private void OnToggleSpellCheck(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        _showSpellCheck = !_showSpellCheck;
+        CheckSpellCheck.IsChecked = _showSpellCheck;
+
+        // Update the spell check indicator
+        UpdateSpellCheckIndicator();
+
+        SavePreferences();
+        Editor.Focus();
+    }
+
     private void OnToggleThemedTitleBar(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         bool isThemed = !CheckThemedTitleBar.IsChecked ?? false;
@@ -1272,6 +1289,7 @@ public partial class MainWindow : Window
             ShowToolbar = ToolbarPanel.IsVisible,
             ShowSidebar = SidebarPanel.IsVisible,
             ShowFooter = FooterPanel.IsVisible,
+            ShowSpellCheck = _showSpellCheck,
             TypewriterMode = _isTypewriterMode,
             FontFamily = _currentFontFamily,
             FontSize = (int)Editor.FontSize,
@@ -1343,6 +1361,10 @@ public partial class MainWindow : Window
         // Apply footer preference
         FooterPanel.IsVisible = preferences.ShowFooter;
         CheckFooter.IsChecked = preferences.ShowFooter;
+
+        // Apply spell check preference
+        _showSpellCheck = preferences.ShowSpellCheck;
+        CheckSpellCheck.IsChecked = preferences.ShowSpellCheck;
 
         // Apply typewriter mode preference
         _isTypewriterMode = preferences.TypewriterMode;
@@ -2740,6 +2762,7 @@ public partial class MainWindow : Window
             WordCountText.Text = "0 / 1000 words";
             WordProgressBar.Maximum = 1000;
             WordProgressBar.Value = 0;
+            SpellCheckIndicatorBar.IsVisible = false;
             return;
         }
 
@@ -2751,6 +2774,88 @@ public partial class MainWindow : Window
         WordCountText.Text = $"{wordCount} / {goal} words";
         WordProgressBar.Maximum = goal;
         WordProgressBar.Value = Math.Min(wordCount, goal);
+
+        // Update spell check indicator
+        UpdateSpellCheckIndicator();
+    }
+
+    private void UpdateSpellCheckIndicator()
+    {
+        if (!_showSpellCheck || _activeDocument == null)
+        {
+            SpellCheckIndicatorBar.IsVisible = false;
+            return;
+        }
+
+        string text = _activeDocument.Text;
+        if (string.IsNullOrEmpty(text))
+        {
+            SpellCheckIndicatorBar.IsVisible = false;
+            return;
+        }
+
+        // Count misspelled words
+        int misspelledCount = 0;
+        var wordMatches = Regex.Matches(text, @"\b[\w']+\b");
+
+        foreach (Match match in wordMatches)
+        {
+            string word = match.Value;
+            if (!_spellChecker.IsWordCorrect(word))
+            {
+                misspelledCount++;
+            }
+        }
+
+        if (misspelledCount > 0)
+        {
+            SpellCheckIndicator.Text = $"⚠ {misspelledCount} spelling {(misspelledCount == 1 ? "error" : "errors")}";
+            SpellCheckIndicatorBar.IsVisible = true;
+        }
+        else
+        {
+            SpellCheckIndicatorBar.IsVisible = false;
+        }
+    }
+
+    private void OnSpellCheckIndicatorClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (_activeDocument == null)
+            return;
+
+        string text = _activeDocument.Text;
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        // Collect all misspelled words
+        var wordMatches = Regex.Matches(text, @"\b[\w']+\b");
+        var misspelledWords = new List<Match>();
+
+        foreach (Match match in wordMatches)
+        {
+            string word = match.Value;
+            if (!_spellChecker.IsWordCorrect(word))
+            {
+                misspelledWords.Add(match);
+            }
+        }
+
+        if (misspelledWords.Count == 0)
+            return;
+
+        // Cycle through misspelled words
+        _currentSpellCheckIndex = (_currentSpellCheckIndex + 1) % misspelledWords.Count;
+        var targetMatch = misspelledWords[_currentSpellCheckIndex];
+
+        // Focus the editor first
+        Editor.Focus();
+
+        // Set caret position first
+        Editor.CaretIndex = targetMatch.Index;
+
+        // Then select the text
+        Editor.SelectionStart = targetMatch.Index;
+        Editor.SelectionEnd = targetMatch.Index + targetMatch.Length;
     }
 
     private int CountWords(string text)
@@ -3005,6 +3110,21 @@ public partial class MainWindow : Window
                 menu.Items.Add(new Separator());
             }
 
+            // Add "Ignore" option
+            var ignoreMenuItem = new MenuItem
+            {
+                Header = "Ignore",
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"))
+            };
+            string wordToIgnore = word;
+            ignoreMenuItem.Click += (s, args) =>
+            {
+                _spellChecker.AddToCustomDictionary(wordToIgnore);
+                // Update the spell check indicator
+                UpdateSpellCheckIndicator();
+            };
+            menu.Items.Add(ignoreMenuItem);
+
             // Add "Add to Dictionary" option
             var addToDictMenuItem = new MenuItem
             {
@@ -3020,6 +3140,9 @@ public partial class MainWindow : Window
                 var prefs = LoadPreferences();
                 prefs.CustomDictionary = _spellChecker.GetCustomDictionary();
                 SavePreferencesWithCustomDict(prefs);
+
+                // Update the spell check indicator
+                UpdateSpellCheckIndicator();
             };
             menu.Items.Add(addToDictMenuItem);
 
@@ -3066,6 +3189,7 @@ public partial class MainWindow : Window
         var json = System.Text.Json.JsonSerializer.Serialize(preferences, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
         System.IO.File.WriteAllText(_preferencesFilePath, json);
     }
+
 
     // Drag and Drop handlers for document reordering
     private void OnDocumentPointerPressed(object? sender, PointerPressedEventArgs e)
