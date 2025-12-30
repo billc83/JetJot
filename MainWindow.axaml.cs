@@ -1,12 +1,14 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using System;
 using System.ComponentModel;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using JetJot.Models;
 
 namespace JetJot;
@@ -63,6 +65,9 @@ public partial class MainWindow : Window
 
     // Flag to prevent font change events during initialization
     private bool _isLoadingPreferences = false;
+
+    // Spell checker
+    private readonly SpellCheckerService _spellChecker = new();
 
     public MainWindow()
     {
@@ -196,6 +201,12 @@ public partial class MainWindow : Window
         Editor.TextChanged += OnEditorTextChanged;
         Editor.PropertyChanged += OnEditorPropertyChanged;
 
+        // Spell checker - initialize dictionaries and wire up context menu
+        InitializeSpellChecker();
+
+        // Use AddHandler with tunneling to intercept the event before TextBox handles it
+        Editor.AddHandler(PointerPressedEvent, OnEditorPointerPressedTunnel, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+        Editor.AddHandler(PointerReleasedEvent, OnEditorPointerReleasedTunnel, Avalonia.Interactivity.RoutingStrategies.Tunnel);
 
         // New document button
         NewDocumentButton.Click += OnNewDocumentClicked;
@@ -1698,6 +1709,8 @@ public partial class MainWindow : Window
                 }
             }
         }
+
+        // Property changed - no action needed
     }
 
     private void EnsureEditorReadyForCommand()
@@ -1801,6 +1814,7 @@ public partial class MainWindow : Window
         }
         Editor.Focus();
     }
+
 
     private async void OnAboutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
@@ -2848,6 +2862,209 @@ public partial class MainWindow : Window
         };
 
         await dialog.ShowDialog(this);
+    }
+
+    // Spell Checker Methods
+    private void InitializeSpellChecker()
+    {
+        try
+        {
+            string dictionaryPath = "en_US.dic";
+            string affixPath = "en_US.aff";
+
+            if (_spellChecker.Initialize(dictionaryPath, affixPath))
+            {
+                Console.WriteLine("Spell checker initialized successfully");
+
+                // Load custom dictionary from preferences
+                var preferences = LoadPreferences();
+                _spellChecker.LoadCustomDictionary(preferences.CustomDictionary);
+            }
+            else
+            {
+                Console.WriteLine("Failed to initialize spell checker");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error initializing spell checker: {ex.Message}");
+        }
+    }
+
+    private string GetWordAtPosition(int caretIndex)
+    {
+        string text = Editor.Text ?? "";
+        if (string.IsNullOrEmpty(text) || caretIndex < 0 || caretIndex > text.Length)
+            return "";
+
+        // Find word boundaries
+        int start = caretIndex;
+        int end = caretIndex;
+
+        // Move start backwards to beginning of word
+        while (start > 0 && (char.IsLetter(text[start - 1]) || text[start - 1] == '\''))
+            start--;
+
+        // Move end forwards to end of word
+        while (end < text.Length && (char.IsLetter(text[end]) || text[end] == '\''))
+            end++;
+
+        if (end > start)
+            return text.Substring(start, end - start);
+
+        return "";
+    }
+
+    private void ReplaceWordAtPosition(int caretIndex, string oldWord, string newWord)
+    {
+        string text = Editor.Text ?? "";
+        if (string.IsNullOrEmpty(text))
+            return;
+
+        // Find the word position
+        int start = caretIndex;
+        while (start > 0 && (char.IsLetter(text[start - 1]) || text[start - 1] == '\''))
+            start--;
+
+        int end = start;
+        while (end < text.Length && (char.IsLetter(text[end]) || text[end] == '\''))
+            end++;
+
+        if (end > start)
+        {
+            string wordAtPos = text.Substring(start, end - start);
+            if (wordAtPos.Equals(oldWord, StringComparison.OrdinalIgnoreCase))
+            {
+                Editor.Text = text.Substring(0, start) + newWord + text.Substring(end);
+                Editor.CaretIndex = start + newWord.Length;
+            }
+        }
+    }
+
+    private void OnEditorPointerPressedTunnel(object? sender, PointerPressedEventArgs e)
+    {
+        // Only handle right-click
+        var point = e.GetCurrentPoint(Editor);
+
+        if (!point.Properties.IsRightButtonPressed)
+            return;
+
+        // Show spell check context menu
+        ShowSpellCheckContextMenu();
+        e.Handled = true;
+    }
+
+    private void OnEditorPointerReleasedTunnel(object? sender, PointerReleasedEventArgs e)
+    {
+        // Only handle right-click
+        var point = e.GetCurrentPoint(Editor);
+
+        if (point.Properties.PointerUpdateKind != PointerUpdateKind.RightButtonReleased)
+            return;
+
+        // Show spell check context menu
+        ShowSpellCheckContextMenu();
+        e.Handled = true;
+    }
+
+    private void ShowSpellCheckContextMenu()
+    {
+        var menu = new ContextMenu();
+        menu.Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"));
+        menu.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
+
+        int caretIndex = Editor.CaretIndex;
+        string word = GetWordAtPosition(caretIndex);
+
+        if (!string.IsNullOrEmpty(word) && !_spellChecker.IsWordCorrect(word))
+        {
+            // Word is misspelled - show suggestions
+            var suggestions = _spellChecker.GetSuggestions(word);
+
+            if (suggestions.Count > 0)
+            {
+                // Add up to 5 suggestions
+                for (int i = 0; i < Math.Min(5, suggestions.Count); i++)
+                {
+                    var suggestion = suggestions[i];
+                    var menuItem = new MenuItem
+                    {
+                        Header = suggestion,
+                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")),
+                        FontWeight = Avalonia.Media.FontWeight.Bold
+                    };
+                    int currentCaretIndex = caretIndex;
+                    string currentWord = word;
+                    menuItem.Click += (s, args) =>
+                    {
+                        ReplaceWordAtPosition(currentCaretIndex, currentWord, suggestion);
+                    };
+                    menu.Items.Add(menuItem);
+                }
+
+                menu.Items.Add(new Separator());
+            }
+
+            // Add "Add to Dictionary" option
+            var addToDictMenuItem = new MenuItem
+            {
+                Header = "Add to Dictionary",
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"))
+            };
+            string wordToAdd = word;
+            addToDictMenuItem.Click += (s, args) =>
+            {
+                _spellChecker.AddToCustomDictionary(wordToAdd);
+
+                // Save to preferences
+                var prefs = LoadPreferences();
+                prefs.CustomDictionary = _spellChecker.GetCustomDictionary();
+                SavePreferencesWithCustomDict(prefs);
+            };
+            menu.Items.Add(addToDictMenuItem);
+
+            menu.Items.Add(new Separator());
+        }
+
+        // Add standard editing options
+        var cutItem = new MenuItem
+        {
+            Header = "Cut",
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"))
+        };
+        cutItem.Click += OnCutClicked;
+        menu.Items.Add(cutItem);
+
+        var copyItem = new MenuItem
+        {
+            Header = "Copy",
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"))
+        };
+        copyItem.Click += OnCopyClicked;
+        menu.Items.Add(copyItem);
+
+        var pasteItem = new MenuItem
+        {
+            Header = "Paste",
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"))
+        };
+        pasteItem.Click += OnPasteClicked;
+        menu.Items.Add(pasteItem);
+
+        Editor.ContextMenu = menu;
+        menu.Open(Editor);
+    }
+
+    private void SavePreferencesWithCustomDict(UserPreferences preferences)
+    {
+        var dir = System.IO.Path.GetDirectoryName(_preferencesFilePath);
+        if (!string.IsNullOrEmpty(dir))
+        {
+            System.IO.Directory.CreateDirectory(dir);
+        }
+
+        var json = System.Text.Json.JsonSerializer.Serialize(preferences, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        System.IO.File.WriteAllText(_preferencesFilePath, json);
     }
 
     // Drag and Drop handlers for document reordering

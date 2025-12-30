@@ -521,29 +521,35 @@
                                         Background="Transparent"
                                         Height="0"/>
 
-                                <TextBox
-                                    Grid.Row="1"
-                                    x:Name="Editor"
-                                    AcceptsReturn="True"
-                                    AcceptsTab="True"
-                                    FontSize="16"
-                                    Background="#1A1A1A"
-                                    Foreground="#CCCCCC"
-                                    BorderThickness="0"
-                                    TextWrapping="Wrap"
-                                    VerticalAlignment="Stretch"
-                                    MinHeight="500"
-                                    CaretBrush="{DynamicResource CaretBrush}"
-                                    SelectionBrush="{DynamicResource AccentBrush}"
-                                    SelectionForegroundBrush="#FFFFFF">
-                                    <TextBox.Styles>
-                                        <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
-                                            <Setter Property="BorderBrush" Value="Transparent"/>
-                                            <Setter Property="BorderThickness" Value="0"/>
-                                            <Setter Property="Background" Value="#1A1A1A"/>
-                                        </Style>
-                                    </TextBox.Styles>
-                                </TextBox>
+                                <Grid Grid.Row="1">
+                                    <TextBox
+                                        x:Name="Editor"
+                                        AcceptsReturn="True"
+                                        AcceptsTab="True"
+                                        FontSize="16"
+                                        Background="#1A1A1A"
+                                        Foreground="#CCCCCC"
+                                        BorderThickness="0"
+                                        TextWrapping="Wrap"
+                                        VerticalAlignment="Stretch"
+                                        MinHeight="500"
+                                        CaretBrush="{DynamicResource CaretBrush}"
+                                        SelectionBrush="{DynamicResource AccentBrush}"
+                                        SelectionForegroundBrush="#FFFFFF">
+                                        <TextBox.Styles>
+                                            <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+                                                <Setter Property="BorderBrush" Value="Transparent"/>
+                                                <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Background" Value="#1A1A1A"/>
+                                            </Style>
+                                        </TextBox.Styles>
+                                    </TextBox>
+                                    <Canvas x:Name="SpellcheckOverlay"
+                                            IsHitTestVisible="False"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"
+                                            Panel.ZIndex="1"/>
+                                </Grid>
 
                                 <!-- Bottom spacer for typewriter mode "scroll past end" -->
                                 <Border Grid.Row="2"

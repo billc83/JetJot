@@ -70,6 +70,10 @@
             "Avalonia.Themes.Fluent": {
               "target": "Package",
               "version": "[11.3.9, )"
+            },
+            "WeCantSpell.Hunspell": {
+              "target": "Package",
+              "version": "[7.0.1, )"
             }
           },
           "imports": [

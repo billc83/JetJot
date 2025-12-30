@@ -73,3 +73,6 @@ C:\Users\ROG\Desktop\Programming Projects\JetJot\bin\Debug\net8.0\runtimes\win-x
 C:\Users\ROG\Desktop\Programming Projects\JetJot\obj\Debug\net8.0\JetJot.csproj.Up2Date
 C:\Users\ROG\Desktop\Programming Projects\JetJot\obj\Debug\net8.0\JetJot.genruntimeconfig.cache
 C:\Users\ROG\Desktop\Programming Projects\JetJot\obj\Debug\net8.0\ref\JetJot.dll
+C:\Users\ROG\Desktop\Programming Projects\JetJot\bin\Debug\net8.0\en_US.dic
+C:\Users\ROG\Desktop\Programming Projects\JetJot\bin\Debug\net8.0\en_US.aff
+C:\Users\ROG\Desktop\Programming Projects\JetJot\bin\Debug\net8.0\WeCantSpell.Hunspell.dll

@@ -582,6 +582,19 @@
         "runtime": {
           "lib/net8.0/Tmds.DBus.Protocol.dll": {}
         }
+      },
+      "WeCantSpell.Hunspell/7.0.1": {
+        "type": "package",
+        "compile": {
+          "lib/net8.0/WeCantSpell.Hunspell.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/WeCantSpell.Hunspell.dll": {
+            "related": ".xml"
+          }
+        }
       }
     }
   },
@@ -1405,6 +1418,26 @@
         "tmds.dbus.protocol.0.21.2.nupkg.sha512",
         "tmds.dbus.protocol.nuspec"
       ]
+    },
+    "WeCantSpell.Hunspell/7.0.1": {
+      "sha512": "Ha0x66QWA+IPj2kJYoweA8MSnB1tymBW6kAIS6Kkj/U3SlMLCBPjDlUXzrrY1zJAxVItrGpFIXjkl3eEIYIE9A==",
+      "type": "package",
+      "path": "wecantspell.hunspell/7.0.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "icon.png",
+        "lib/net10.0/WeCantSpell.Hunspell.dll",
+        "lib/net10.0/WeCantSpell.Hunspell.xml",
+        "lib/net8.0/WeCantSpell.Hunspell.dll",
+        "lib/net8.0/WeCantSpell.Hunspell.xml",
+        "lib/netstandard2.0/WeCantSpell.Hunspell.dll",
+        "lib/netstandard2.0/WeCantSpell.Hunspell.xml",
+        "license.txt",
+        "readme.md",
+        "wecantspell.hunspell.7.0.1.nupkg.sha512",
+        "wecantspell.hunspell.nuspec"
+      ]
     }
   },
   "projectFileDependencyGroups": {
@@ -1413,7 +1446,8 @@
       "Avalonia.Desktop >= 11.3.9",
       "Avalonia.Diagnostics >= 11.3.9",
       "Avalonia.Fonts.Inter >= 11.3.9",
-      "Avalonia.Themes.Fluent >= 11.3.9"
+      "Avalonia.Themes.Fluent >= 11.3.9",
+      "WeCantSpell.Hunspell >= 7.0.1"
     ]
   },
   "packageFolders": {
@@ -1486,6 +1520,10 @@
           "Avalonia.Themes.Fluent": {
             "target": "Package",
             "version": "[11.3.9, )"
+          },
+          "WeCantSpell.Hunspell": {
+            "target": "Package",
+            "version": "[7.0.1, )"
           }
         },
         "imports": [

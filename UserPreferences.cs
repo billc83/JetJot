@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace JetJot.Models
 {
     public class UserPreferences
@@ -11,5 +13,6 @@ namespace JetJot.Models
         public string AccentColor { get; set; } = "#4A5D73";
         public bool ThemedTitleBar { get; set; } = true;
         public string? LastOpenManuscriptPath { get; set; }
+        public List<string> CustomDictionary { get; set; } = new List<string>();
     }
 }
