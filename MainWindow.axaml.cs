@@ -1459,8 +1459,23 @@ public partial class MainWindow : Window
         if (listBox == null) return;
 
         var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
+        var transparentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent);
 
-        // Find the selected item container and update its background
+        // First, clear all document backgrounds
+        for (int i = 0; i < _manuscript.Documents.Count; i++)
+        {
+            var container = listBox.ContainerFromIndex(i);
+            if (container is Control control)
+            {
+                var itemBorder = FindItemBorder(control);
+                if (itemBorder != null)
+                {
+                    itemBorder.Background = transparentBrush;
+                }
+            }
+        }
+
+        // Then, set the background for the active document
         if (_activeDocument != null)
         {
             var index = _manuscript.Documents.IndexOf(_activeDocument);
@@ -2155,6 +2170,12 @@ public partial class MainWindow : Window
         DocumentList.SelectedItem = newDoc;
         _activeDocument = newDoc;
         Editor.Text = newDoc.Text;
+
+        // Highlight the new document after UI updates
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            UpdateSelectedDocumentColor();
+        }, Avalonia.Threading.DispatcherPriority.Loaded);
     }
 
     private void OnManuscriptNamePointerEntered(object? sender, Avalonia.Input.PointerEventArgs e)
@@ -2172,6 +2193,33 @@ public partial class MainWindow : Window
         if (textBlock != null)
         {
             textBlock.Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
+        }
+    }
+
+    private void OnMenuSubmenuOpened(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                // Find the popup in the visual tree
+                var popup = menuItem.GetVisualDescendants()
+                    .OfType<Avalonia.Controls.Primitives.Popup>()
+                    .FirstOrDefault();
+
+                if (popup?.Host is Window popupWindow)
+                {
+                    // Get the menu item's screen position
+                    var menuItemPosition = menuItem.PointToScreen(new Point(0, 0));
+                    var menuItemBounds = menuItem.Bounds;
+
+                    // Position the popup window directly below the menu item
+                    popupWindow.Position = new PixelPoint(
+                        (int)menuItemPosition.X,
+                        (int)(menuItemPosition.Y + menuItemBounds.Height)
+                    );
+                }
+            }, Avalonia.Threading.DispatcherPriority.Background);
         }
     }
 

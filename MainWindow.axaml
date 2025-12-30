@@ -86,8 +86,12 @@
                         <Style Selector="MenuItem">
                             <Setter Property="Focusable" Value="False"/>
                         </Style>
+                        <Style Selector="MenuItem /template/ Popup">
+                            <Setter Property="PlacementMode" Value="Bottom"/>
+                            <Setter Property="PlacementTarget" Value="{Binding $parent[MenuItem]}"/>
+                        </Style>
                     </Menu.Styles>
-                    <MenuItem x:Name="FileMenu" Header="File" Foreground="#FFFFFF">
+                    <MenuItem x:Name="FileMenu" Header="File" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
                         <MenuItem Header="New Manuscript" Click="OnNewManuscriptMenuClicked"/>
                         <MenuItem Header="Open/Import Manuscript..." Click="OnImportManuscriptClicked"/>
                         <Separator/>
@@ -95,7 +99,7 @@
                         <Separator/>
                         <MenuItem Header="Exit" Click="OnExitClicked"/>
                     </MenuItem>
-                    <MenuItem Header="Edit" Foreground="#FFFFFF">
+                    <MenuItem Header="Edit" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
                         <MenuItem Header="Rename Manuscript" Click="OnRenameManuscriptMenuClicked"/>
                         <MenuItem Header="Rename Document" Click="OnRenameDocumentMenuClicked"/>
                         <Separator/>
@@ -106,7 +110,7 @@
                         <MenuItem Header="Copy" Click="OnCopyClicked"/>
                         <MenuItem Header="Paste" Click="OnPasteClicked"/>
                     </MenuItem>
-                    <MenuItem Header="View" Foreground="#FFFFFF">
+                    <MenuItem Header="View" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
                         <MenuItem x:Name="MenuTypewriterMode" Header="Typewriter Mode" Click="OnToggleTypewriterMode">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckTypewriterMode" IsChecked="False" IsHitTestVisible="False"/>
@@ -147,7 +151,7 @@
                         </MenuItem>
                         <MenuItem Header="Customize Theme..." Click="OnCustomizeAccentColorClicked"/>
                     </MenuItem>
-                    <MenuItem Header="Help" Foreground="#FFFFFF">
+                    <MenuItem Header="Help" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
                         <MenuItem Header="About" Click="OnAboutClicked"/>
                     </MenuItem>
                 </Menu>
