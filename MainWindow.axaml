@@ -114,6 +114,8 @@
                         <MenuItem Header="Cut" Click="OnCutClicked" InputGesture="Ctrl+X"/>
                         <MenuItem Header="Copy" Click="OnCopyClicked" InputGesture="Ctrl+C"/>
                         <MenuItem Header="Paste" Click="OnPasteClicked" InputGesture="Ctrl+V"/>
+                        <Separator/>
+                        <MenuItem Header="Find and Replace..." Click="OnFindAndReplaceClicked" InputGesture="Ctrl+Shift+F"/>
                     </MenuItem>
                     <MenuItem Header="View" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
                         <MenuItem x:Name="MenuTypewriterMode" Header="Typewriter Mode" Click="OnToggleTypewriterMode" InputGesture="Ctrl+Shift+T">

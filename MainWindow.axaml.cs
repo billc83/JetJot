@@ -120,6 +120,12 @@ public partial class MainWindow : Window
                 OnPasteClicked(null, null!);
                 e.Handled = true;
             }
+            // Ctrl+Shift+F - Find and Replace
+            else if (e.Key == Avalonia.Input.Key.F && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
+            {
+                OnFindAndReplaceClicked(null, null!);
+                e.Handled = true;
+            }
             // Ctrl+Shift+T - Toggle Typewriter Mode
             else if (e.Key == Avalonia.Input.Key.T && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
             {
@@ -1727,6 +1733,9 @@ public partial class MainWindow : Window
 
     private Window CreateStyledDialog(string title, double width, double height)
     {
+        var accentColor = Avalonia.Media.Color.Parse(_accentColor);
+        var accentBrush = new Avalonia.Media.SolidColorBrush(accentColor);
+
         var dialog = new Window
         {
             Title = title,
@@ -1740,6 +1749,17 @@ public partial class MainWindow : Window
             Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A"))
         };
 
+        // Ensure Fluent theme accent (focus rings, etc.) matches the user's accent color.
+        dialog.Resources["AccentBrush"] = accentBrush;
+        dialog.Resources["CaretBrush"] = accentBrush;
+        dialog.Resources["SystemAccentColor"] = accentColor;
+        dialog.Resources["SystemAccentColorLight1"] = accentColor;
+        dialog.Resources["SystemAccentColorLight2"] = accentColor;
+        dialog.Resources["SystemAccentColorLight3"] = accentColor;
+        dialog.Resources["SystemAccentColorDark1"] = accentColor;
+        dialog.Resources["SystemAccentColorDark2"] = accentColor;
+        dialog.Resources["SystemAccentColorDark3"] = accentColor;
+
         return dialog;
     }
 
@@ -1749,6 +1769,7 @@ public partial class MainWindow : Window
 
         // Set selection color
         textBox.SelectionBrush = accentBrush;
+        textBox.SetValue(Avalonia.Controls.Primitives.TemplatedControl.FocusAdornerProperty, null);
 
         // Set focus border color when template is applied
         textBox.TemplateApplied += (s, e) =>
@@ -1846,6 +1867,48 @@ public partial class MainWindow : Window
             CornerRadius = new CornerRadius(4),
             Padding = new Avalonia.Thickness(12, 6)
         };
+    }
+
+    private (Border border, TextBox textBox) CreateDialogTextBox(Avalonia.Media.SolidColorBrush accentBrush)
+    {
+        var border = new Border
+        {
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#2A2A2A")),
+            BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+            BorderThickness = new Avalonia.Thickness(1),
+            CornerRadius = new CornerRadius(4),
+            Width = 440
+        };
+
+        var textBox = new TextBox
+        {
+            Background = Avalonia.Media.Brushes.Transparent,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")),
+            BorderThickness = new Avalonia.Thickness(0),
+            SelectionBrush = accentBrush,
+            Padding = new Avalonia.Thickness(8)
+        };
+
+        // Set the focus adorner to null to disable purple outline
+        textBox.SetValue(Avalonia.Controls.Primitives.TemplatedControl.FocusAdornerProperty, null);
+
+        // Force the inner template border to stay neutral (avoid Fluent purple focus ring).
+        textBox.TemplateApplied += (s, e) =>
+        {
+            if (e.NameScope.Find<Border>("PART_BorderElement") is Border innerBorder)
+            {
+                innerBorder.BorderBrush = Avalonia.Media.Brushes.Transparent;
+                innerBorder.BorderThickness = new Avalonia.Thickness(0);
+            }
+        };
+
+        // Change border color on focus
+        textBox.GotFocus += (s, e) => border.BorderBrush = accentBrush;
+        textBox.LostFocus += (s, e) => border.BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A"));
+
+        border.Child = textBox;
+
+        return (border, textBox);
     }
 
     private void SetFontFamilyComboBox(string fontFamily)
@@ -2192,6 +2255,7 @@ public partial class MainWindow : Window
         stackPanel.Children.Add(CreateShortcutItem("Ctrl+F", "Focus Find Box"));
         stackPanel.Children.Add(CreateShortcutItem("F3", "Find Next"));
         stackPanel.Children.Add(CreateShortcutItem("Shift+F3", "Find Previous"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+Shift+F", "Find and Replace"));
 
         // View/Focus Modes Section
         stackPanel.Children.Add(CreateShortcutSectionHeader("View & Focus"));
@@ -3221,6 +3285,129 @@ public partial class MainWindow : Window
         FindTextBox.Text = string.Empty;
         Editor.SelectionStart = Editor.CaretIndex;
         Editor.SelectionEnd = Editor.CaretIndex;
+    }
+
+    private async void OnFindAndReplaceClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var dialog = CreateStyledDialog("Find and Replace", 500, 280);
+
+        var outerGrid = new Grid
+        {
+            RowDefinitions = new RowDefinitions("35,*")
+        };
+
+        var titleBar = CreateDialogTitleBar("Find and Replace", dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var stackPanel = new StackPanel
+        {
+            Margin = new Avalonia.Thickness(30, 20, 30, 20),
+            Spacing = 15
+        };
+
+        var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
+
+        // Find text box
+        var findLabel = new TextBlock
+        {
+            Text = "Find:",
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC")),
+            FontSize = 13
+        };
+
+        var (findBorder, findTextBox) = CreateDialogTextBox(accentBrush);
+
+        // Replace text box
+        var replaceLabel = new TextBlock
+        {
+            Text = "Replace with:",
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC")),
+            FontSize = 13
+        };
+
+        var (replaceBorder, replaceTextBox) = CreateDialogTextBox(accentBrush);
+
+        // Buttons panel
+        var buttonsPanel = new StackPanel
+        {
+            Orientation = Avalonia.Layout.Orientation.Horizontal,
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Spacing = 10,
+            Margin = new Avalonia.Thickness(0, 10, 0, 0)
+        };
+
+        var replaceAllButton = CreateAccentButton("Replace All", 120);
+        replaceAllButton.Click += (s, args) =>
+        {
+            if (string.IsNullOrEmpty(findTextBox.Text)) return;
+
+            var editorText = Editor.Text ?? string.Empty;
+            var searchText = findTextBox.Text;
+            var replaceText = replaceTextBox.Text ?? string.Empty;
+
+            // Use whole word matching with case sensitivity
+            // \b ensures we match whole words only
+            var pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(searchText) + @"\b";
+            var newText = System.Text.RegularExpressions.Regex.Replace(
+                editorText,
+                pattern,
+                replaceText
+            );
+
+            Editor.Text = newText;
+            Editor.CaretIndex = 0;
+
+            dialog.Close();
+        };
+
+        var cancelButton = CreateAccentButton("Cancel", 100);
+        cancelButton.Click += (s, args) => dialog.Close();
+
+        buttonsPanel.Children.Add(replaceAllButton);
+        buttonsPanel.Children.Add(cancelButton);
+
+        stackPanel.Children.Add(findLabel);
+        stackPanel.Children.Add(findBorder);
+        stackPanel.Children.Add(replaceLabel);
+        stackPanel.Children.Add(replaceBorder);
+        stackPanel.Children.Add(buttonsPanel);
+
+        Grid.SetRow(stackPanel, 1);
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(stackPanel);
+
+        dialog.Content = outerGrid;
+
+        // Focus the find text box when dialog opens
+        findTextBox.AttachedToVisualTree += (s, args) => findTextBox.Focus();
+
+        await dialog.ShowDialog(this);
+    }
+
+    private void FindNextOccurrence(string searchText, int startIndex)
+    {
+        var editorText = Editor.Text ?? string.Empty;
+        var foundIndex = editorText.IndexOf(searchText, startIndex, StringComparison.OrdinalIgnoreCase);
+
+        // If not found from current position, wrap around to beginning
+        if (foundIndex == -1)
+        {
+            foundIndex = editorText.IndexOf(searchText, 0, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (foundIndex != -1)
+        {
+            Editor.Focus();
+            Editor.CaretIndex = foundIndex;
+            Editor.SelectionStart = foundIndex;
+            Editor.SelectionEnd = foundIndex + searchText.Length;
+
+            // Update last selection tracking
+            _lastSelectionStart = Editor.SelectionStart;
+            _lastSelectionEnd = Editor.SelectionEnd;
+            _lastCaretIndex = Editor.CaretIndex;
+        }
     }
 
     private void UpdateWordCount()
