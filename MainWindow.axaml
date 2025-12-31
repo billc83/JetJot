@@ -10,7 +10,6 @@
         x:Class="JetJot.MainWindow"
         Title="JetJot"
         Icon="avares://JetJot/Logo.ico"
-        Background="#1E1E1E"
         ExtendClientAreaToDecorationsHint="True"
         ExtendClientAreaChromeHints="NoChrome"
         ExtendClientAreaTitleBarHeightHint="40">
@@ -92,15 +91,21 @@
                         </Style>
                     </Menu.Styles>
                     <MenuItem x:Name="FileMenu" Header="File" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
-                        <MenuItem Header="New Manuscript" Click="OnNewManuscriptMenuClicked"/>
-                        <MenuItem Header="Open/Import Manuscript..." Click="OnImportManuscriptClicked"/>
+                        <MenuItem Header="New Project" Click="OnNewManuscriptMenuClicked"/>
+                        <MenuItem Header="Open/Import Project..." Click="OnImportManuscriptClicked"/>
                         <Separator/>
                         <MenuItem Header="New Document" Click="OnNewDocumentClicked"/>
+                        <Separator/>
+                        <MenuItem Header="Export">
+                            <MenuItem Header=".txt" Click="OnExportTxtClicked"/>
+                            <MenuItem Header=".md" Click="OnExportMdClicked"/>
+                            <MenuItem Header=".html" Click="OnExportHtmlClicked"/>
+                        </MenuItem>
                         <Separator/>
                         <MenuItem Header="Exit" Click="OnExitClicked"/>
                     </MenuItem>
                     <MenuItem Header="Edit" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
-                        <MenuItem Header="Rename Manuscript" Click="OnRenameManuscriptMenuClicked"/>
+                        <MenuItem Header="Rename Project" Click="OnRenameManuscriptMenuClicked"/>
                         <MenuItem Header="Rename Document" Click="OnRenameDocumentMenuClicked"/>
                         <Separator/>
                         <MenuItem Header="Undo" Click="OnUndoClicked"/>
@@ -133,7 +138,7 @@
                                 <CheckBox x:Name="CheckToolbar" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem x:Name="MenuShowSidebar" Header="Show Manuscript View" Click="OnToggleSidebar">
+                        <MenuItem x:Name="MenuShowSidebar" Header="Show Project View" Click="OnToggleSidebar">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckSidebar" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
@@ -269,7 +274,6 @@
                     </Border.Styles>
                     <TextBlock x:Name="ManuscriptNameText"
                                Text="{Binding Name}"
-                               Foreground="#FFFFFF"
                                FontSize="16"
                                FontWeight="SemiBold"
                                VerticalAlignment="Center"
@@ -395,7 +399,6 @@
                 Padding="0">
 
             <Border x:Name="EditorInnerBorder"
-                    Background="#1A1A1A"
                     CornerRadius="0"
                     Padding="0">
 
@@ -532,8 +535,6 @@
                                         AcceptsReturn="True"
                                         AcceptsTab="True"
                                         FontSize="16"
-                                        Background="#1A1A1A"
-                                        Foreground="#CCCCCC"
                                         BorderThickness="0"
                                         TextWrapping="Wrap"
                                         VerticalAlignment="Stretch"
@@ -545,7 +546,6 @@
                                             <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
                                                 <Setter Property="BorderBrush" Value="Transparent"/>
                                                 <Setter Property="BorderThickness" Value="0"/>
-                                                <Setter Property="Background" Value="#1A1A1A"/>
                                             </Style>
                                         </TextBox.Styles>
                                     </TextBox>

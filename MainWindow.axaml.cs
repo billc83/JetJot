@@ -329,14 +329,14 @@ public partial class MainWindow : Window
         }
 
         // Prompt for new manuscript name
-        var dialog = CreateStyledDialog("New Manuscript", 400, 185);
+        var dialog = CreateStyledDialog("New Project", 400, 185);
 
         var grid = new Grid
         {
             RowDefinitions = new RowDefinitions("35,*")
         };
 
-        var titleBar = CreateDialogTitleBar("New Manuscript", dialog);
+        var titleBar = CreateDialogTitleBar("New Project", dialog);
         Grid.SetRow(titleBar, 0);
         grid.Children.Add(titleBar);
 
@@ -434,7 +434,7 @@ public partial class MainWindow : Window
         // Let user select from ANY location, but suggest JetJot folder
         var folders = await storageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
         {
-            Title = "Select Manuscript Folder",
+            Title = "Select Project Folder",
             AllowMultiple = false,
             SuggestedStartLocation = await storageProvider.TryGetFolderFromPathAsync(new Uri(jetJotRoot))
         });
@@ -447,7 +447,7 @@ public partial class MainWindow : Window
             var manifestPath = System.IO.Path.Combine(sourceFolderPath, "manuscript.json");
             if (!System.IO.File.Exists(manifestPath))
             {
-                await ShowErrorDialog("Invalid Manuscript", "The selected folder is not a valid JetJot manuscript.");
+                await ShowErrorDialog("Invalid Project", "The selected folder is not a valid JetJot project.");
                 return;
             }
 
@@ -471,8 +471,8 @@ public partial class MainWindow : Window
                 {
                     // Ask user if they want to overwrite
                     var result = await AskYesNoQuestion(
-                        "Manuscript Already Exists",
-                        $"A manuscript named '{manuscriptFolderName}' already exists in your JetJot folder. Do you want to overwrite it?");
+                        "Project Already Exists",
+                        $"A project named '{manuscriptFolderName}' already exists in your JetJot folder. Do you want to overwrite it?");
 
                     if (!result)
                     {
@@ -617,7 +617,7 @@ public partial class MainWindow : Window
             // Check if folder exists
             if (!System.IO.Directory.Exists(folderPath))
             {
-                await ShowErrorDialog("Manuscript Not Found", $"The folder does not exist:\n{folderPath}");
+                await ShowErrorDialog("Project Not Found", $"The folder does not exist:\n{folderPath}");
                 RemoveFromRecents(folderPath);
                 return;
             }
@@ -626,7 +626,7 @@ public partial class MainWindow : Window
             var manifestPath = System.IO.Path.Combine(folderPath, "manuscript.json");
             if (!System.IO.File.Exists(manifestPath))
             {
-                await ShowErrorDialog("Invalid Manuscript", "The selected folder is not a valid JetJot manuscript.");
+                await ShowErrorDialog("Invalid Project", "The selected folder is not a valid JetJot project.");
                 RemoveFromRecents(folderPath);
                 return;
             }
@@ -679,7 +679,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            await ShowErrorDialog("Error Loading Manuscript", $"An error occurred:\n{ex.Message}");
+            await ShowErrorDialog("Error Loading Project", $"An error occurred:\n{ex.Message}");
             RemoveFromRecents(folderPath);
         }
     }
@@ -1384,6 +1384,9 @@ public partial class MainWindow : Window
         SetFontFamilyComboBox(preferences.FontFamily);
         SetFontSizeComboBox(preferences.FontSize);
 
+        // Apply dark mode (always on)
+        ApplyThemeMode(true);
+
         // Apply themed title bar preference
         CheckThemedTitleBar.IsChecked = preferences.ThemedTitleBar;
 
@@ -1484,6 +1487,89 @@ public partial class MainWindow : Window
 
         // 9. Update selected document background
         UpdateSelectedDocumentColor();
+    }
+
+    private void ApplyThemeMode(bool isDarkMode)
+    {
+        // Define color schemes
+        var bgColor = isDarkMode ? "#1E1E1E" : "#FFFFFF";
+        var textColor = isDarkMode ? "#CCCCCC" : "#1E1E1E";
+        var editorBgColor = isDarkMode ? "#1A1A1A" : "#FFFFFF";
+        var sidebarBgColor = isDarkMode ? "#2A2A2A" : "#F0F0F0";
+        var menuBgColor = isDarkMode ? "#2A2A2A" : "#F8F8F8";
+        var borderColor = isDarkMode ? "#3A3A3A" : "#D0D0D0";
+        var menuTextColor = isDarkMode ? "#FFFFFF" : "#1E1E1E";
+
+        var bgBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(bgColor));
+        var textBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(textColor));
+        var editorBgBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(editorBgColor));
+        var sidebarBgBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(sidebarBgColor));
+        var menuBgBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(menuBgColor));
+        var borderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(borderColor));
+        var menuTextBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(menuTextColor));
+
+        // Main window background
+        this.Background = bgBrush;
+
+        // Editor
+        if (Editor != null)
+        {
+            Editor.Background = editorBgBrush;
+            Editor.Foreground = textBrush;
+        }
+
+        // Editor inner border (main editor background area)
+        if (this.FindControl<Border>("EditorInnerBorder") is Border editorInner)
+        {
+            editorInner.Background = editorBgBrush;
+        }
+
+        // Sidebar
+        if (this.FindControl<Border>("SidebarPanel") is Border sidebar)
+        {
+            sidebar.Background = sidebarBgBrush;
+        }
+
+        // Document list
+        if (this.FindControl<ListBox>("DocumentList") is ListBox docList)
+        {
+            docList.Background = sidebarBgBrush;
+            docList.Foreground = textBrush;
+        }
+
+        // Manuscript name text
+        if (this.FindControl<TextBlock>("ManuscriptNameText") is TextBlock nameText)
+        {
+            nameText.Foreground = isDarkMode ? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")) : textBrush;
+        }
+
+        // Menu bar
+        if (this.FindControl<Menu>("MenuBar") is Menu menuBar)
+        {
+            menuBar.Background = menuBgBrush;
+            menuBar.Foreground = menuTextBrush;
+        }
+
+        // Toolbar
+        if (this.FindControl<Border>("ToolbarPanel") is Border toolbar)
+        {
+            toolbar.Background = menuBgBrush;
+        }
+
+        // Footer
+        if (this.FindControl<Border>("FooterPanel") is Border footer)
+        {
+            footer.Background = menuBgBrush;
+        }
+
+        // Word count text
+        if (this.FindControl<TextBlock>("WordCountText") is TextBlock wordCount)
+        {
+            wordCount.Foreground = textBrush;
+        }
+
+        // Reapply accent color to ensure it works with the new theme
+        ApplyAccentColor();
     }
 
     private void UpdateSelectedDocumentColor()
@@ -1704,6 +1790,119 @@ public partial class MainWindow : Window
         _manuscript.Documents.Clear();
         _activeDocument = null;
         Editor.Text = string.Empty;
+    }
+
+    private async void OnExportTxtClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        await ExportProject("txt", GenerateTxtExport());
+    }
+
+    private async void OnExportMdClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        await ExportProject("md", GenerateMarkdownExport());
+    }
+
+    private async void OnExportHtmlClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        await ExportProject("html", GenerateHtmlExport());
+    }
+
+    private async System.Threading.Tasks.Task ExportProject(string extension, string content)
+    {
+        try
+        {
+            var storageProvider = StorageProvider;
+            var suggestedFileName = $"{_manuscript.Name}.{extension}";
+
+            // Get Documents folder path
+            var documentsPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+
+            var file = await storageProvider.SaveFilePickerAsync(new Avalonia.Platform.Storage.FilePickerSaveOptions
+            {
+                Title = "Export Project",
+                SuggestedFileName = suggestedFileName,
+                DefaultExtension = extension,
+                ShowOverwritePrompt = true,
+                SuggestedStartLocation = await storageProvider.TryGetFolderFromPathAsync(new Uri(documentsPath))
+            });
+
+            if (file == null)
+                return; // User cancelled
+
+            // Write to file
+            await using var stream = await file.OpenWriteAsync();
+            await using var writer = new System.IO.StreamWriter(stream);
+            await writer.WriteAsync(content);
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorDialog("Export Failed", $"An error occurred while exporting:\n{ex.Message}");
+        }
+    }
+
+    private string GenerateTxtExport()
+    {
+        var content = new System.Text.StringBuilder();
+
+        foreach (var doc in _manuscript.Documents)
+        {
+            content.AppendLine($"========== {doc.Title} ==========");
+            content.AppendLine();
+            content.AppendLine(doc.Text);
+            content.AppendLine();
+            content.AppendLine();
+        }
+
+        return content.ToString();
+    }
+
+    private string GenerateMarkdownExport()
+    {
+        var content = new System.Text.StringBuilder();
+
+        foreach (var doc in _manuscript.Documents)
+        {
+            content.AppendLine($"# {doc.Title}");
+            content.AppendLine();
+            content.AppendLine(doc.Text);
+            content.AppendLine();
+            content.AppendLine("---");
+            content.AppendLine();
+        }
+
+        return content.ToString();
+    }
+
+    private string GenerateHtmlExport()
+    {
+        var content = new System.Text.StringBuilder();
+
+        content.AppendLine("<!DOCTYPE html>");
+        content.AppendLine("<html>");
+        content.AppendLine("<head>");
+        content.AppendLine($"    <meta charset=\"UTF-8\">");
+        content.AppendLine($"    <title>{_manuscript.Name}</title>");
+        content.AppendLine("    <style>");
+        content.AppendLine("        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; line-height: 1.6; }");
+        content.AppendLine("        h1 { color: #333; border-bottom: 2px solid #4A5D73; padding-bottom: 10px; }");
+        content.AppendLine("        .document { margin-bottom: 40px; }");
+        content.AppendLine("        .document-content { white-space: pre-wrap; }");
+        content.AppendLine("    </style>");
+        content.AppendLine("</head>");
+        content.AppendLine("<body>");
+
+        foreach (var doc in _manuscript.Documents)
+        {
+            content.AppendLine("    <div class=\"document\">");
+            content.AppendLine($"        <h1>{System.Web.HttpUtility.HtmlEncode(doc.Title)}</h1>");
+            content.AppendLine($"        <div class=\"document-content\">{System.Web.HttpUtility.HtmlEncode(doc.Text)}</div>");
+            content.AppendLine("    </div>");
+        }
+
+        content.AppendLine("</body>");
+        content.AppendLine("</html>");
+
+        return content.ToString();
     }
 
     private void OnExitClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
@@ -2020,14 +2219,14 @@ public partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowRenameManuscriptDialog()
     {
-        var dialog = CreateStyledDialog("Rename Manuscript", 400, 185);
+        var dialog = CreateStyledDialog("Rename Project", 400, 185);
 
         var outerGrid = new Grid
         {
             RowDefinitions = new RowDefinitions("35,*")
         };
 
-        var titleBar = CreateDialogTitleBar("Rename Manuscript", dialog);
+        var titleBar = CreateDialogTitleBar("Rename Project", dialog);
         Grid.SetRow(titleBar, 0);
 
         var contentPanel = new StackPanel
@@ -2714,10 +2913,10 @@ public partial class MainWindow : Window
 
         if (foundIndex != -1)
         {
+            Editor.Focus();
+            Editor.CaretIndex = foundIndex;
             Editor.SelectionStart = foundIndex;
             Editor.SelectionEnd = foundIndex + searchText.Length;
-            Editor.CaretIndex = foundIndex + searchText.Length;
-            Editor.Focus();
         }
     }
 
@@ -2741,10 +2940,10 @@ public partial class MainWindow : Window
 
         if (foundIndex != -1)
         {
+            Editor.Focus();
+            Editor.CaretIndex = foundIndex;
             Editor.SelectionStart = foundIndex;
             Editor.SelectionEnd = foundIndex + searchText.Length;
-            Editor.CaretIndex = foundIndex + searchText.Length;
-            Editor.Focus();
         }
     }
 
@@ -2809,7 +3008,7 @@ public partial class MainWindow : Window
 
         if (misspelledCount > 0)
         {
-            SpellCheckIndicator.Text = $"⚠ {misspelledCount} spelling {(misspelledCount == 1 ? "error" : "errors")}";
+            SpellCheckIndicator.Text = $"⚠ {misspelledCount}";
             SpellCheckIndicatorBar.IsVisible = true;
         }
         else
