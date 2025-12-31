@@ -91,10 +91,10 @@
                         </Style>
                     </Menu.Styles>
                     <MenuItem x:Name="FileMenu" Header="File" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
-                        <MenuItem Header="New Project" Click="OnNewManuscriptMenuClicked"/>
-                        <MenuItem Header="Open/Import Project..." Click="OnImportManuscriptClicked"/>
+                        <MenuItem Header="New Project" Click="OnNewManuscriptMenuClicked" InputGesture="Ctrl+Shift+N"/>
+                        <MenuItem Header="Open/Import Project..." Click="OnImportManuscriptClicked" InputGesture="Ctrl+O"/>
                         <Separator/>
-                        <MenuItem Header="New Document" Click="OnNewDocumentClicked"/>
+                        <MenuItem Header="New Document" Click="OnNewDocumentClicked" InputGesture="Ctrl+N"/>
                         <Separator/>
                         <MenuItem Header="Export">
                             <MenuItem Header=".txt" Click="OnExportTxtClicked"/>
@@ -111,44 +111,44 @@
                         <MenuItem Header="Undo" Click="OnUndoClicked"/>
                         <MenuItem Header="Redo" Click="OnRedoClicked"/>
                         <Separator/>
-                        <MenuItem Header="Cut" Click="OnCutClicked"/>
-                        <MenuItem Header="Copy" Click="OnCopyClicked"/>
-                        <MenuItem Header="Paste" Click="OnPasteClicked"/>
+                        <MenuItem Header="Cut" Click="OnCutClicked" InputGesture="Ctrl+X"/>
+                        <MenuItem Header="Copy" Click="OnCopyClicked" InputGesture="Ctrl+C"/>
+                        <MenuItem Header="Paste" Click="OnPasteClicked" InputGesture="Ctrl+V"/>
                     </MenuItem>
                     <MenuItem Header="View" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
-                        <MenuItem x:Name="MenuTypewriterMode" Header="Typewriter Mode" Click="OnToggleTypewriterMode">
+                        <MenuItem x:Name="MenuTypewriterMode" Header="Typewriter Mode" Click="OnToggleTypewriterMode" InputGesture="Ctrl+Shift+T">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckTypewriterMode" IsChecked="False" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator/>
-                        <MenuItem x:Name="MenuFocusMode" Header="Focus Mode" Click="OnToggleFocusMode">
+                        <MenuItem x:Name="MenuFocusMode" Header="Focus Mode" Click="OnToggleFocusMode" InputGesture="Ctrl+1">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckFocusMode" IsChecked="False" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem x:Name="MenuSuperFocusMode" Header="Super Focus Mode (F11)" Click="OnToggleSuperFocusMode">
+                        <MenuItem x:Name="MenuSuperFocusMode" Header="Super Focus Mode" Click="OnToggleSuperFocusMode" InputGesture="Ctrl+0">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckSuperFocusMode" IsChecked="False" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator/>
-                        <MenuItem x:Name="MenuShowToolbar" Header="Show Toolbar" Click="OnToggleToolbar">
+                        <MenuItem x:Name="MenuShowToolbar" Header="Show Toolbar" Click="OnToggleToolbar" InputGesture="Ctrl+2">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckToolbar" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem x:Name="MenuShowSidebar" Header="Show Project View" Click="OnToggleSidebar">
+                        <MenuItem x:Name="MenuShowSidebar" Header="Show Project View" Click="OnToggleSidebar" InputGesture="Ctrl+3">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckSidebar" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem x:Name="MenuShowFooter" Header="Show Progress Bar" Click="OnToggleFooter">
+                        <MenuItem x:Name="MenuShowFooter" Header="Show Progress Bar" Click="OnToggleFooter" InputGesture="Ctrl+4">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckFooter" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem x:Name="MenuShowSpellCheck" Header="Show Spell Check" Click="OnToggleSpellCheck">
+                        <MenuItem x:Name="MenuShowSpellCheck" Header="Show Spell Check" Click="OnToggleSpellCheck" InputGesture="Ctrl+5">
                             <MenuItem.Icon>
                                 <CheckBox x:Name="CheckSpellCheck" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
@@ -159,9 +159,15 @@
                                 <CheckBox x:Name="CheckThemedTitleBar" IsChecked="True" IsHitTestVisible="False"/>
                             </MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem x:Name="MenuThemedCursor" Header="Themed Cursor" Click="OnToggleThemedCursor">
+                            <MenuItem.Icon>
+                                <CheckBox x:Name="CheckThemedCursor" IsChecked="True" IsHitTestVisible="False"/>
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Customize Theme..." Click="OnCustomizeAccentColorClicked"/>
                     </MenuItem>
                     <MenuItem Header="Help" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
+                        <MenuItem Header="Keyboard Shortcuts" Click="OnKeyboardShortcutsClicked"/>
                         <MenuItem Header="About" Click="OnAboutClicked"/>
                     </MenuItem>
                 </Menu>
@@ -437,6 +443,7 @@
                                        Background="#3A3A3A"
                                        Foreground="#EAEAEA"
                                        ToolTip.Tip="Previous (Shift+F3)"
+                                       Focusable="False"
                                        HorizontalContentAlignment="Center"
                                        VerticalContentAlignment="Center"
                                        Padding="0"/>
@@ -447,6 +454,7 @@
                                        Background="#3A3A3A"
                                        Foreground="#EAEAEA"
                                        ToolTip.Tip="Next (F3)"
+                                       Focusable="False"
                                        HorizontalContentAlignment="Center"
                                        VerticalContentAlignment="Center"
                                        Padding="0"/>
@@ -457,6 +465,7 @@
                                        Background="#3A3A3A"
                                        Foreground="#EAEAEA"
                                        ToolTip.Tip="Clear"
+                                       Focusable="False"
                                        HorizontalContentAlignment="Center"
                                        VerticalContentAlignment="Center"
                                        Padding="0"/>
@@ -546,6 +555,13 @@
                                             <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
                                                 <Setter Property="BorderBrush" Value="Transparent"/>
                                                 <Setter Property="BorderThickness" Value="0"/>
+                                                <Setter Property="Background" Value="#1A1A1A"/>
+                                            </Style>
+                                            <Style Selector="TextBox:pointerover /template/ Border#PART_BorderElement">
+                                                <Setter Property="Background" Value="#1A1A1A"/>
+                                            </Style>
+                                            <Style Selector="TextBox /template/ Border#PART_BorderElement">
+                                                <Setter Property="Background" Value="#1A1A1A"/>
                                             </Style>
                                         </TextBox.Styles>
                                     </TextBox>
@@ -670,3 +686,4 @@
         </Border>
     </Grid>
 </Window>
+

@@ -78,8 +78,20 @@ public partial class MainWindow : Window
         // Add keyboard shortcuts
         this.KeyDown += (sender, e) =>
         {
+            // Ctrl+Shift+N - New Project
+            if (e.Key == Avalonia.Input.Key.N && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
+            {
+                OnNewManuscriptMenuClicked(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+O - Open/Import Project
+            else if (e.Key == Avalonia.Input.Key.O && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnImportManuscriptClicked(null, null!);
+                e.Handled = true;
+            }
             // Ctrl+N - New Document
-            if (e.Key == Avalonia.Input.Key.N && e.KeyModifiers == KeyModifiers.Control)
+            else if (e.Key == Avalonia.Input.Key.N && e.KeyModifiers == KeyModifiers.Control)
             {
                 OnNewDocumentClicked(null, null!);
                 e.Handled = true;
@@ -90,10 +102,70 @@ public partial class MainWindow : Window
                 SaveCurrentDocument();
                 e.Handled = true;
             }
+            // Ctrl+C - Copy
+            else if (e.Key == Avalonia.Input.Key.C && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnCopyClicked(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+X - Cut
+            else if (e.Key == Avalonia.Input.Key.X && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnCutClicked(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+V - Paste
+            else if (e.Key == Avalonia.Input.Key.V && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnPasteClicked(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+Shift+T - Toggle Typewriter Mode
+            else if (e.Key == Avalonia.Input.Key.T && e.KeyModifiers == (KeyModifiers.Control | KeyModifiers.Shift))
+            {
+                OnToggleTypewriterMode(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+1 - Toggle Focus Mode
+            else if (e.Key == Avalonia.Input.Key.D1 && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnToggleFocusMode(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+0 - Toggle Super Focus Mode
+            else if (e.Key == Avalonia.Input.Key.D0 && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnToggleSuperFocusMode(null, null!);
+                e.Handled = true;
+            }
             // F11 - Toggle Super Focus Mode
             else if (e.Key == Avalonia.Input.Key.F11)
             {
                 OnToggleSuperFocusMode(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+2 - Toggle Toolbar
+            else if (e.Key == Avalonia.Input.Key.D2 && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnToggleToolbar(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+3 - Toggle Sidebar
+            else if (e.Key == Avalonia.Input.Key.D3 && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnToggleSidebar(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+4 - Toggle Footer (Progress Bar)
+            else if (e.Key == Avalonia.Input.Key.D4 && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnToggleFooter(null, null!);
+                e.Handled = true;
+            }
+            // Ctrl+5 - Toggle Spell Check
+            else if (e.Key == Avalonia.Input.Key.D5 && e.KeyModifiers == KeyModifiers.Control)
+            {
+                OnToggleSpellCheck(null, null!);
                 e.Handled = true;
             }
             // Escape - Exit Super Focus Mode
@@ -984,6 +1056,18 @@ public partial class MainWindow : Window
         Editor.Focus();
     }
 
+    private void OnToggleThemedCursor(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        bool isThemed = !CheckThemedCursor.IsChecked ?? false;
+        CheckThemedCursor.IsChecked = isThemed;
+
+        // Update cursor color
+        ApplyCursorColor();
+
+        SavePreferences();
+        Editor.Focus();
+    }
+
     private void OnToggleFocusMode(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         bool isFocusMode = !CheckFocusMode.IsChecked ?? false;
@@ -1295,6 +1379,7 @@ public partial class MainWindow : Window
             FontSize = (int)Editor.FontSize,
             AccentColor = _accentColor,
             ThemedTitleBar = CheckThemedTitleBar.IsChecked ?? true,
+            ThemedCursor = CheckThemedCursor.IsChecked ?? true,
             LastOpenManuscriptPath = _manuscript.FolderPath
         };
 
@@ -1390,6 +1475,9 @@ public partial class MainWindow : Window
         // Apply themed title bar preference
         CheckThemedTitleBar.IsChecked = preferences.ThemedTitleBar;
 
+        // Apply themed cursor preference
+        CheckThemedCursor.IsChecked = preferences.ThemedCursor;
+
         // Apply accent color preference
         _accentColor = preferences.AccentColor;
         ApplyAccentColor();
@@ -1401,17 +1489,8 @@ public partial class MainWindow : Window
     {
         var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
 
-        // For very dark accent colors (like Editor's Ebony #3A3A3A), use a lighter color for the cursor
-        // to ensure it's visible against the dark editor background
-        var caretBrush = accentBrush;
-        if (_accentColor.Equals("#3A3A3A", StringComparison.OrdinalIgnoreCase))
-        {
-            caretBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
-        }
-
         // Update the dynamic resources
         this.Resources["AccentBrush"] = accentBrush;
-        this.Resources["CaretBrush"] = caretBrush;
 
         // 1. Title Bar - only apply theme if preference is enabled
         if (this.FindControl<Border>("TitleBarPanel") is Border titleBar)
@@ -1487,6 +1566,39 @@ public partial class MainWindow : Window
 
         // 9. Update selected document background
         UpdateSelectedDocumentColor();
+
+        // 10. Apply cursor color based on preference
+        ApplyCursorColor();
+    }
+
+    private void ApplyCursorColor()
+    {
+        bool themedCursor = CheckThemedCursor?.IsChecked ?? true;
+
+        Avalonia.Media.SolidColorBrush caretBrush;
+
+        if (themedCursor)
+        {
+            // Use accent color for cursor
+            var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
+
+            // For very dark accent colors, use a lighter color for better visibility
+            if (_accentColor.Equals("#3A3A3A", StringComparison.OrdinalIgnoreCase))
+            {
+                caretBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC"));
+            }
+            else
+            {
+                caretBrush = accentBrush;
+            }
+        }
+        else
+        {
+            // Use default white cursor when themed cursor is disabled
+            caretBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF"));
+        }
+
+        this.Resources["CaretBrush"] = caretBrush;
     }
 
     private void ApplyThemeMode(bool isDarkMode)
@@ -2037,9 +2149,144 @@ public partial class MainWindow : Window
     }
 
 
+    private async void OnKeyboardShortcutsClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        var dialog = CreateStyledDialog("Keyboard Shortcuts", 500, 600);
+
+        var outerGrid = new Grid
+        {
+            RowDefinitions = new RowDefinitions("35,*")
+        };
+
+        var titleBar = CreateDialogTitleBar("Keyboard Shortcuts", dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var scrollViewer = new ScrollViewer
+        {
+            Margin = new Avalonia.Thickness(20),
+            VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto
+        };
+
+        var stackPanel = new StackPanel
+        {
+            Spacing = 15
+        };
+
+        // File Operations Section
+        stackPanel.Children.Add(CreateShortcutSectionHeader("File Operations"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+Shift+N", "New Project"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+O", "Open/Import Project"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+N", "New Document"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+S", "Save Document"));
+
+        // Edit Operations Section
+        stackPanel.Children.Add(CreateShortcutSectionHeader("Edit Operations"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+C", "Copy"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+X", "Cut"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+V", "Paste"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+Z", "Undo"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+Y", "Redo"));
+
+        // Find/Search Section
+        stackPanel.Children.Add(CreateShortcutSectionHeader("Find/Search"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+F", "Focus Find Box"));
+        stackPanel.Children.Add(CreateShortcutItem("F3", "Find Next"));
+        stackPanel.Children.Add(CreateShortcutItem("Shift+F3", "Find Previous"));
+
+        // View/Focus Modes Section
+        stackPanel.Children.Add(CreateShortcutSectionHeader("View & Focus"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+Shift+T", "Toggle Typewriter Mode"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+1", "Toggle Focus Mode"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+0 / F11", "Toggle Super Focus Mode"));
+        stackPanel.Children.Add(CreateShortcutItem("Escape", "Exit Super Focus Mode"));
+
+        // UI Toggles Section
+        stackPanel.Children.Add(CreateShortcutSectionHeader("UI Toggles"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+2", "Toggle Toolbar"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+3", "Toggle Sidebar"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+4", "Toggle Progress Bar"));
+        stackPanel.Children.Add(CreateShortcutItem("Ctrl+5", "Toggle Spell Check"));
+
+        // Add extra bottom padding so content doesn't get covered by close button
+        stackPanel.Margin = new Avalonia.Thickness(0, 0, 0, 60);
+
+        scrollViewer.Content = stackPanel;
+        Grid.SetRow(scrollViewer, 1);
+
+        var closeButton = CreateAccentButton("Close", 100);
+        closeButton.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+        closeButton.Margin = new Avalonia.Thickness(0, 0, 0, 15);
+        closeButton.Click += (s, args) => dialog.Close();
+
+        var buttonPanel = new StackPanel
+        {
+            Children = { closeButton },
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
+        Grid.SetRow(buttonPanel, 1);
+        buttonPanel.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Bottom;
+
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(scrollViewer);
+        outerGrid.Children.Add(buttonPanel);
+
+        dialog.Content = outerGrid;
+
+        await dialog.ShowDialog(this);
+    }
+
+    private TextBlock CreateShortcutSectionHeader(string text)
+    {
+        return new TextBlock
+        {
+            Text = text,
+            FontSize = 14,
+            FontWeight = Avalonia.Media.FontWeight.Bold,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor)),
+            Margin = new Avalonia.Thickness(0, 10, 0, 5)
+        };
+    }
+
+    private Grid CreateShortcutItem(string keys, string description)
+    {
+        var grid = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("160,*"),
+            Margin = new Avalonia.Thickness(0, 3, 0, 3)
+        };
+
+        var keyText = new TextBlock
+        {
+            Text = keys,
+            FontFamily = new Avalonia.Media.FontFamily("Consolas, Courier New"),
+            FontSize = 13,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#FFFFFF")),
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+            Padding = new Avalonia.Thickness(8, 3, 8, 3),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left
+        };
+
+        var descText = new TextBlock
+        {
+            Text = description,
+            FontSize = 13,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#CCCCCC")),
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center,
+            Margin = new Avalonia.Thickness(10, 0, 0, 0)
+        };
+
+        Grid.SetColumn(keyText, 0);
+        Grid.SetColumn(descText, 1);
+
+        grid.Children.Add(keyText);
+        grid.Children.Add(descText);
+
+        return grid;
+    }
+
     private async void OnAboutClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
-        var dialog = CreateStyledDialog("About JetJot", 400, 235);
+        var dialog = CreateStyledDialog("About JetJot", 400, 260);
 
         var outerGrid = new Grid
         {
@@ -2075,10 +2322,19 @@ public partial class MainWindow : Window
 
         var versionText = new TextBlock
         {
-            Text = "Version 0.20",
+            Text = "Version 0.30",
             FontSize = 12,
             Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999")),
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
+
+        var creatorText = new TextBlock
+        {
+            Text = "Created by William S. Coolman",
+            FontSize = 11,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#888888")),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            Margin = new Avalonia.Thickness(0, 5, 0, 0)
         };
 
         var okButton = CreateAccentButton("OK", 100);
@@ -2090,6 +2346,7 @@ public partial class MainWindow : Window
         stackPanel.Children.Add(titleText);
         stackPanel.Children.Add(taglineText);
         stackPanel.Children.Add(versionText);
+        stackPanel.Children.Add(creatorText);
         stackPanel.Children.Add(okButton);
 
         Grid.SetRow(stackPanel, 1);
@@ -2880,11 +3137,13 @@ public partial class MainWindow : Window
 
     private void OnFindNextClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
+        e.Handled = true;
         FindNext();
     }
 
     private void OnFindPreviousClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
+        e.Handled = true;
         FindPrevious();
     }
 
@@ -2901,8 +3160,8 @@ public partial class MainWindow : Window
         var editorText = Editor.Text ?? string.Empty;
         if (string.IsNullOrEmpty(editorText)) return;
 
-        // Start searching from current caret position
-        var startIndex = Editor.CaretIndex;
+        // Start searching from after the current selection or last known selection
+        var startIndex = Editor.SelectionEnd > 0 ? Editor.SelectionEnd : (_lastSelectionEnd > 0 ? _lastSelectionEnd : Editor.CaretIndex);
         var foundIndex = editorText.IndexOf(searchText, startIndex, StringComparison.OrdinalIgnoreCase);
 
         // If not found from current position, wrap around to beginning
@@ -2917,6 +3176,10 @@ public partial class MainWindow : Window
             Editor.CaretIndex = foundIndex;
             Editor.SelectionStart = foundIndex;
             Editor.SelectionEnd = foundIndex + searchText.Length;
+
+            // Update last selection tracking
+            _lastSelectionEnd = Editor.SelectionEnd;
+            _lastCaretIndex = Editor.CaretIndex;
         }
     }
 
@@ -2928,8 +3191,9 @@ public partial class MainWindow : Window
         var editorText = Editor.Text ?? string.Empty;
         if (string.IsNullOrEmpty(editorText)) return;
 
-        // Start searching backwards from current selection start
-        var startIndex = Math.Max(0, Editor.SelectionStart - 1);
+        // Start searching backwards from current selection start or last known selection
+        var selectionStart = Editor.SelectionStart > 0 ? Editor.SelectionStart : (_lastSelectionStart > 0 ? _lastSelectionStart : Editor.CaretIndex);
+        var startIndex = Math.Max(0, selectionStart - 1);
         var foundIndex = editorText.LastIndexOf(searchText, startIndex, StringComparison.OrdinalIgnoreCase);
 
         // If not found before current position, wrap around to end
@@ -2944,6 +3208,11 @@ public partial class MainWindow : Window
             Editor.CaretIndex = foundIndex;
             Editor.SelectionStart = foundIndex;
             Editor.SelectionEnd = foundIndex + searchText.Length;
+
+            // Update last selection tracking
+            _lastSelectionStart = Editor.SelectionStart;
+            _lastSelectionEnd = Editor.SelectionEnd;
+            _lastCaretIndex = Editor.CaretIndex;
         }
     }
 
