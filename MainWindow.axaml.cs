@@ -743,6 +743,12 @@ public partial class MainWindow : Window
     {
         try
         {
+            // Save current manuscript before switching
+            if (!string.IsNullOrEmpty(_manuscript.FolderPath))
+            {
+                SaveCurrentDocument();
+            }
+
             // Check if folder exists
             if (!System.IO.Directory.Exists(folderPath))
             {
@@ -980,7 +986,11 @@ public partial class MainWindow : Window
                 };
 
                 var recentPath = recent.FolderPath;
-                menuItem.Click += (s, e) => LoadManuscriptFromFolder(recentPath);
+                menuItem.Click += (s, e) =>
+                {
+                    LoadManuscriptFromFolder(recentPath);
+                    FileMenu.Close(); // Close the File menu dropdown
+                };
 
                 // Add context menu for right-click removal
                 var contextMenu = new ContextMenu();
