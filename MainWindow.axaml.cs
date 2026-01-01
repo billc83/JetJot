@@ -1036,10 +1036,12 @@ public partial class MainWindow : Window
                 // Restore the saved width or default to 240
                 var prefs = LoadPreferences();
                 mainGrid.ColumnDefinitions[0].Width = new GridLength(prefs.SidebarWidth);
+                mainGrid.ColumnDefinitions[0].MinWidth = 150;
             }
             else
             {
                 mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+                mainGrid.ColumnDefinitions[0].MinWidth = 0;
             }
         }
 
@@ -1162,6 +1164,7 @@ public partial class MainWindow : Window
             if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
             {
                 mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+                mainGrid.ColumnDefinitions[0].MinWidth = 0;
             }
 
             // Update checkboxes
@@ -1180,7 +1183,17 @@ public partial class MainWindow : Window
             var mainGrid = this.FindControl<Grid>("MainGrid");
             if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
             {
-                mainGrid.ColumnDefinitions[0].Width = _preFocusModeSidebarVisible ? new GridLength(240) : new GridLength(0);
+                if (_preFocusModeSidebarVisible)
+                {
+                    var prefs = LoadPreferences();
+                    mainGrid.ColumnDefinitions[0].Width = new GridLength(prefs.SidebarWidth);
+                    mainGrid.ColumnDefinitions[0].MinWidth = 150;
+                }
+                else
+                {
+                    mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+                    mainGrid.ColumnDefinitions[0].MinWidth = 0;
+                }
             }
 
             // Update checkboxes to match restored state
@@ -1231,6 +1244,7 @@ public partial class MainWindow : Window
                 if (mainGrid.ColumnDefinitions.Count > 0)
                 {
                     mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+                    mainGrid.ColumnDefinitions[0].MinWidth = 0;
                 }
                 if (mainGrid.RowDefinitions.Count >= 2)
                 {
@@ -1300,7 +1314,17 @@ public partial class MainWindow : Window
         {
             if (mainGrid.ColumnDefinitions.Count > 0)
             {
-                mainGrid.ColumnDefinitions[0].Width = _preSuperFocusModeSidebarVisible ? new GridLength(240) : new GridLength(0);
+                if (_preSuperFocusModeSidebarVisible)
+                {
+                    var prefs = LoadPreferences();
+                    mainGrid.ColumnDefinitions[0].Width = new GridLength(prefs.SidebarWidth);
+                    mainGrid.ColumnDefinitions[0].MinWidth = 150;
+                }
+                else
+                {
+                    mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+                    mainGrid.ColumnDefinitions[0].MinWidth = 0;
+                }
             }
             if (mainGrid.RowDefinitions.Count >= 2)
             {

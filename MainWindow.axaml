@@ -387,7 +387,7 @@
                         BorderBrush="#3A3A3A"
                         BorderThickness="0,1,0,0"
                         Padding="12"
-                        Margin="0"
+                        Margin="0,0,0,40"
                         PointerEntered="OnTrashZonePointerEnter"
                         PointerExited="OnTrashZonePointerLeave">
                     <StackPanel Orientation="Horizontal"
@@ -666,7 +666,7 @@
                 Background="#2D2D2D"
                 BorderBrush="#3A3A3A"
                 BorderThickness="0,1,0,0"
-                MinHeight="36"
+                MinHeight="32"
                 Padding="20,0">
 
             <Grid ColumnDefinitions="Auto,*,Auto,Auto">
