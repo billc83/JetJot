@@ -1,3 +1,26 @@
+# Introduction
+
+Change Log
+
+JetJot follows an iterative, stability-first development approach.  
+
+This Change Log was written and exported using JetJot.
+
+Version numbers reflect internal milestones rather than strict semantic versioning.
+
+"It's somewhat based on my vibes at the time." - William S. Coolman
+
+---
+
+# v0.43
+
+Persistence Improvement
+
+- Fixed an issue where opening/importing a project or switching to a recently opened project would not save data
+- Fixed an issue where File Menu did not close after selecting and loading a recent project
+
+---
+
 # v0.42
 
 Sidebar Tweaks
@@ -250,6 +273,12 @@ Added:
 Initial Commit
 
 Working on Codename: JetJot, a word processor inspired by Ulysses, Scrivener, and iA Writer.  Written in C# using Avalonia, mostly as a learning experience
+
+---
+
+# Outro
+
+Thank you for reading! 
 
 ---
 

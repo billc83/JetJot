@@ -979,9 +979,13 @@ public partial class MainWindow : Window
             // Add recent items with context menu for removal
             foreach (var recent in recents.Recents)
             {
+                // Check if this is the current manuscript
+                var isCurrentManuscript = !string.IsNullOrEmpty(_manuscript.FolderPath) &&
+                                         string.Equals(_manuscript.FolderPath, recent.FolderPath, StringComparison.OrdinalIgnoreCase);
+
                 var menuItem = new MenuItem
                 {
-                    Header = recent.Name,
+                    Header = isCurrentManuscript ? $"{recent.Name} (Current)" : recent.Name,
                     Tag = "RecentItem"
                 };
 
@@ -2618,7 +2622,7 @@ public partial class MainWindow : Window
 
         var versionText = new TextBlock
         {
-            Text = "Version 0.30",
+            Text = "Version 1.0.0",
             FontSize = 12,
             Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#999999")),
             HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
