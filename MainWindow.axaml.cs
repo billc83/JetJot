@@ -1033,13 +1033,21 @@ public partial class MainWindow : Window
         {
             if (isVisible)
             {
-                // Restore the saved width or default to 240
+                // Restore the saved width
                 var prefs = LoadPreferences();
                 mainGrid.ColumnDefinitions[0].Width = new GridLength(prefs.SidebarWidth);
                 mainGrid.ColumnDefinitions[0].MinWidth = 150;
             }
             else
             {
+                // Save the current width before hiding
+                var currentWidth = mainGrid.ColumnDefinitions[0].Width.Value;
+                if (currentWidth > 0)
+                {
+                    var prefs = LoadPreferences();
+                    prefs.SidebarWidth = currentWidth;
+                    SavePreferencesWithCustomDict(prefs);
+                }
                 mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
                 mainGrid.ColumnDefinitions[0].MinWidth = 0;
             }
@@ -1465,6 +1473,13 @@ public partial class MainWindow : Window
     private void SavePreferences()
     {
         var sidebarColumn = this.FindControl<Grid>("MainGrid")?.ColumnDefinitions[0];
+        var currentSidebarWidth = sidebarColumn?.Width.Value ?? 240;
+
+        // Only save sidebar width if it's greater than 0 (i.e., sidebar is visible and has a real width)
+        // Otherwise, preserve the previously saved width from preferences
+        var prefs = LoadPreferences();
+        var sidebarWidthToSave = currentSidebarWidth > 0 ? currentSidebarWidth : prefs.SidebarWidth;
+
         var preferences = new UserPreferences
         {
             ShowToolbar = ToolbarPanel.IsVisible,
@@ -1477,7 +1492,7 @@ public partial class MainWindow : Window
             AccentColor = _accentColor,
             ThemedTitleBar = CheckThemedTitleBar.IsChecked ?? true,
             ThemedCursor = CheckThemedCursor.IsChecked ?? true,
-            SidebarWidth = sidebarColumn?.Width.Value ?? 240,
+            SidebarWidth = sidebarWidthToSave,
             LeftMargin = _leftMargin,
             RightMargin = _rightMargin,
             CustomDictionary = _spellChecker.GetCustomDictionary(),

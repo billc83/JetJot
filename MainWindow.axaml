@@ -246,7 +246,7 @@
 
         <Grid x:Name="MainGrid" Grid.Row="1" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2" RowDefinitions="*,Auto,Auto">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="240" MinWidth="150" MaxWidth="500"/>
+                <ColumnDefinition Width="240" MinWidth="150" MaxWidth="320"/>
                 <ColumnDefinition Width="0"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
