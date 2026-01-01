@@ -27,6 +27,7 @@ namespace JetJot
                 LastOpenDocumentId = manuscript.LastOpenDocumentId
             };
 
+            // Save documents
             for (int i = 0; i < manuscript.Documents.Count; i++)
             {
                 var doc = manuscript.Documents[i];
@@ -55,8 +56,6 @@ namespace JetJot
         public Manuscript LoadManuscript(string folderPath)
         {
             // Read manifest
-            Console.WriteLine("ATTEMPTING TO READ / LOAD MANUSCRIPT");
-            Console.WriteLine($"FolderPath = {folderPath}");
             var manifestPath = Path.Combine(folderPath, "manuscript.json");
             var json = File.ReadAllText(manifestPath);
             var manifest = JsonSerializer.Deserialize<ManuscriptManifest>(json);
@@ -69,7 +68,7 @@ namespace JetJot
                 LastOpenDocumentId = manifest.LastOpenDocumentId
             };
 
-            // Load documents in order
+            // Load documents
             var orderedDocs = manifest.Documents.OrderBy(d => d.Order).ToList();
 
             foreach (var docManifest in orderedDocs)

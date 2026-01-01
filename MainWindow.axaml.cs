@@ -71,6 +71,12 @@ public partial class MainWindow : Window
     private bool _showSpellCheck = true;
     private int _currentSpellCheckIndex = -1;
 
+    // Margin adjustment
+    private bool _isDraggingLeftMargin = false;
+    private bool _isDraggingRightMargin = false;
+    private double _leftMargin = 40;
+    private double _rightMargin = 40;
+
     public MainWindow()
     {
         InitializeComponent();
@@ -232,6 +238,9 @@ public partial class MainWindow : Window
             _manuscript.FolderPath = loadedManuscript.FolderPath;
             _manuscript.LastOpenDocumentId = loadedManuscript.LastOpenDocumentId;
 
+            // Clear current lists and populate with loaded content
+            _manuscript.Documents.Clear();
+
             foreach (var doc in loadedManuscript.Documents)
             {
                 _manuscript.Documents.Add(doc);
@@ -256,13 +265,14 @@ public partial class MainWindow : Window
         ManuscriptNameText.DataContext = _manuscript;
 
         // Select document (last open or first)
-        Document docToSelect;
+        Document? docToSelect = null;
         if (_manuscript.LastOpenDocumentId.HasValue)
         {
-            docToSelect = _manuscript.Documents.FirstOrDefault(d => d.Id == _manuscript.LastOpenDocumentId.Value)
-                          ?? _manuscript.Documents.FirstOrDefault();
+            docToSelect = _manuscript.Documents.FirstOrDefault(d => d.Id == _manuscript.LastOpenDocumentId.Value);
         }
-        else
+
+        // If no last document, find first available
+        if (docToSelect == null)
         {
             docToSelect = _manuscript.Documents.FirstOrDefault();
         }
@@ -272,6 +282,9 @@ public partial class MainWindow : Window
             _activeDocument = docToSelect;
             DocumentList.SelectedItem = docToSelect;
             Editor.Text = docToSelect.Text;
+
+            // Ensure the selected document (including section documents) uses the accent highlight
+            UpdateSelectedDocumentColor();
         }
 
         // Sidebar selection changes active document
@@ -318,6 +331,22 @@ public partial class MainWindow : Window
 
         // Load and apply user preferences
         LoadAndApplyPreferences();
+
+        // Set up margin indicator dragging
+        SetupMarginIndicators();
+
+        // Update right margin indicator when canvas size changes
+        var marginCanvas = this.FindControl<Canvas>("MarginIndicatorCanvas");
+        if (marginCanvas != null)
+        {
+            marginCanvas.PropertyChanged += (s, e) =>
+            {
+                if (e.Property.Name == nameof(Canvas.Bounds))
+                {
+                    ApplyMargins();
+                }
+            };
+        }
 
         // Set initial focus to editor
         Editor.Focus();
@@ -684,8 +713,30 @@ public partial class MainWindow : Window
         // Save new manuscript
         _storage.SaveManuscript(_manuscript);
 
+        // Debug: print manifest after creating new manuscript
+        try
+        {
+            var manifestPath = System.IO.Path.Combine(_manuscript.FolderPath ?? string.Empty, "manuscript.json");
+            if (System.IO.File.Exists(manifestPath))
+            {
+                Console.WriteLine("Manifest after creating new manuscript:");
+                Console.WriteLine(System.IO.File.ReadAllText(manifestPath));
+            }
+            else
+            {
+                Console.WriteLine("Manifest not found after creating new manuscript");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error reading manifest after creating manuscript: {ex.Message}");
+        }
+
         // Add to recents
         AddToRecents(_manuscript.FolderPath, _manuscript.Name);
+
+        // Remember this manuscript as last open so it will be restored on restart
+        SavePreferences();
     }
 
     private async void LoadManuscriptFromFolder(string folderPath)
@@ -726,13 +777,14 @@ public partial class MainWindow : Window
             }
 
             // Select document (last open or first)
-            Document? docToSelect;
+            Document? docToSelect = null;
             if (_manuscript.LastOpenDocumentId.HasValue)
             {
-                docToSelect = _manuscript.Documents.FirstOrDefault(d => d.Id == _manuscript.LastOpenDocumentId.Value)
-                              ?? _manuscript.Documents.FirstOrDefault();
+                docToSelect = _manuscript.Documents.FirstOrDefault(d => d.Id == _manuscript.LastOpenDocumentId.Value);
             }
-            else
+
+            // If no last document, find first available
+            if (docToSelect == null)
             {
                 docToSelect = _manuscript.Documents.FirstOrDefault();
             }
@@ -975,11 +1027,20 @@ public partial class MainWindow : Window
         SidebarPanel.IsVisible = isVisible;
         CheckSidebar.IsChecked = isVisible;
 
-        // Adjust column width: 0 when hidden, 240 when visible
+        // Adjust column width: 0 when hidden, restore saved width when visible
         var mainGrid = this.FindControl<Grid>("MainGrid");
         if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
         {
-            mainGrid.ColumnDefinitions[0].Width = isVisible ? new GridLength(240) : new GridLength(0);
+            if (isVisible)
+            {
+                // Restore the saved width or default to 240
+                var prefs = LoadPreferences();
+                mainGrid.ColumnDefinitions[0].Width = new GridLength(prefs.SidebarWidth);
+            }
+            else
+            {
+                mainGrid.ColumnDefinitions[0].Width = new GridLength(0);
+            }
         }
 
         // If showing sidebar, exit focus modes
@@ -998,6 +1059,11 @@ public partial class MainWindow : Window
         UpdateTitleBarText();
         SavePreferences();
         Editor.Focus();
+    }
+
+    private void OnSidebarResizeCompleted(object? sender, Avalonia.Input.VectorEventArgs e)
+    {
+        SavePreferences();
     }
 
     private void UpdateTitleBarText()
@@ -1374,6 +1440,7 @@ public partial class MainWindow : Window
 
     private void SavePreferences()
     {
+        var sidebarColumn = this.FindControl<Grid>("MainGrid")?.ColumnDefinitions[0];
         var preferences = new UserPreferences
         {
             ShowToolbar = ToolbarPanel.IsVisible,
@@ -1386,6 +1453,10 @@ public partial class MainWindow : Window
             AccentColor = _accentColor,
             ThemedTitleBar = CheckThemedTitleBar.IsChecked ?? true,
             ThemedCursor = CheckThemedCursor.IsChecked ?? true,
+            SidebarWidth = sidebarColumn?.Width.Value ?? 240,
+            LeftMargin = _leftMargin,
+            RightMargin = _rightMargin,
+            CustomDictionary = _spellChecker.GetCustomDictionary(),
             LastOpenManuscriptPath = _manuscript.FolderPath
         };
 
@@ -1446,7 +1517,8 @@ public partial class MainWindow : Window
         var mainGrid = this.FindControl<Grid>("MainGrid");
         if (mainGrid != null && mainGrid.ColumnDefinitions.Count > 0)
         {
-            mainGrid.ColumnDefinitions[0].Width = preferences.ShowSidebar ? new GridLength(240) : new GridLength(0);
+            var width = preferences.ShowSidebar ? preferences.SidebarWidth : 0;
+            mainGrid.ColumnDefinitions[0].Width = new GridLength(width);
         }
 
         // Apply footer preference
@@ -1487,6 +1559,11 @@ public partial class MainWindow : Window
         // Apply accent color preference
         _accentColor = preferences.AccentColor;
         ApplyAccentColor();
+
+        // Apply margin preferences
+        _leftMargin = preferences.LeftMargin;
+        _rightMargin = preferences.RightMargin;
+        ApplyMargins();
 
         _isLoadingPreferences = false;
     }
@@ -1690,30 +1767,33 @@ public partial class MainWindow : Window
         ApplyAccentColor();
     }
 
+
     private void UpdateSelectedDocumentColor()
     {
         var listBox = this.FindControl<ListBox>("DocumentList");
-        if (listBox == null) return;
 
         var accentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
         var transparentBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Colors.Transparent);
 
-        // First, clear all document backgrounds
-        for (int i = 0; i < _manuscript.Documents.Count; i++)
+        // Clear all document backgrounds
+        if (listBox != null)
         {
-            var container = listBox.ContainerFromIndex(i);
-            if (container is Control control)
+            for (int i = 0; i < _manuscript.Documents.Count; i++)
             {
-                var itemBorder = FindItemBorder(control);
-                if (itemBorder != null)
+                var container = listBox.ContainerFromIndex(i);
+                if (container is Control control)
                 {
-                    itemBorder.Background = transparentBrush;
+                    var itemBorder = FindItemBorder(control);
+                    if (itemBorder != null)
+                    {
+                        itemBorder.Background = transparentBrush;
+                    }
                 }
             }
         }
 
-        // Then, set the background for the active document
-        if (_activeDocument != null)
+        // Set the background for the active document
+        if (_activeDocument != null && listBox != null)
         {
             var index = _manuscript.Documents.IndexOf(_activeDocument);
             if (index >= 0)
@@ -1727,6 +1807,107 @@ public partial class MainWindow : Window
                         itemBorder.Background = accentBrush;
                     }
                 }
+            }
+        }
+    }
+
+    private void SetupMarginIndicators()
+    {
+        var leftIndicator = this.FindControl<Border>("LeftMarginIndicator");
+        var rightIndicator = this.FindControl<Border>("RightMarginIndicator");
+        var canvas = this.FindControl<Canvas>("MarginIndicatorCanvas");
+
+        if (leftIndicator == null || rightIndicator == null || canvas == null) return;
+
+        // Left margin indicator dragging
+        leftIndicator.PointerPressed += (s, e) =>
+        {
+            _isDraggingLeftMargin = true;
+            e.Pointer.Capture(leftIndicator);
+            e.Handled = true;
+        };
+
+        leftIndicator.PointerMoved += (s, e) =>
+        {
+            if (_isDraggingLeftMargin)
+            {
+                var pos = e.GetPosition(canvas);
+                _leftMargin = Math.Max(10, Math.Min(200, pos.X));
+                _rightMargin = _leftMargin; // Mirror the margin
+                ApplyMargins();
+                e.Handled = true;
+            }
+        };
+
+        leftIndicator.PointerReleased += (s, e) =>
+        {
+            if (_isDraggingLeftMargin)
+            {
+                _isDraggingLeftMargin = false;
+                e.Pointer.Capture(null);
+                SavePreferences();
+                e.Handled = true;
+            }
+        };
+
+        // Right margin indicator dragging
+        rightIndicator.PointerPressed += (s, e) =>
+        {
+            _isDraggingRightMargin = true;
+            e.Pointer.Capture(rightIndicator);
+            e.Handled = true;
+        };
+
+        rightIndicator.PointerMoved += (s, e) =>
+        {
+            if (_isDraggingRightMargin)
+            {
+                var pos = e.GetPosition(canvas);
+                var canvasWidth = canvas.Bounds.Width;
+                _rightMargin = Math.Max(10, Math.Min(200, canvasWidth - pos.X));
+                _leftMargin = _rightMargin; // Mirror the margin
+                ApplyMargins();
+                e.Handled = true;
+            }
+        };
+
+        rightIndicator.PointerReleased += (s, e) =>
+        {
+            if (_isDraggingRightMargin)
+            {
+                _isDraggingRightMargin = false;
+                e.Pointer.Capture(null);
+                SavePreferences();
+                e.Handled = true;
+            }
+        };
+    }
+
+    private void ApplyMargins()
+    {
+        var editorBorder = this.FindControl<Border>("EditorBorder");
+        var leftIndicator = this.FindControl<Border>("LeftMarginIndicator");
+        var rightIndicator = this.FindControl<Border>("RightMarginIndicator");
+        var canvas = this.FindControl<Canvas>("MarginIndicatorCanvas");
+
+        if (editorBorder != null)
+        {
+            editorBorder.Padding = new Avalonia.Thickness(_leftMargin, 20, _rightMargin, 20);
+        }
+
+        // The canvas is now outside the padding, so it spans the full width.
+        // Position indicators at the margin positions
+        if (leftIndicator != null)
+        {
+            Canvas.SetLeft(leftIndicator, _leftMargin);
+        }
+
+        if (rightIndicator != null && canvas != null)
+        {
+            var canvasWidth = canvas.Bounds.Width;
+            if (canvasWidth > 0)
+            {
+                Canvas.SetLeft(rightIndicator, canvasWidth - _rightMargin - 2); // Subtract margin and indicator width
             }
         }
     }
@@ -1770,6 +1951,7 @@ public partial class MainWindow : Window
         // Set selection color
         textBox.SelectionBrush = accentBrush;
         textBox.SetValue(Avalonia.Controls.Primitives.TemplatedControl.FocusAdornerProperty, null);
+        textBox.Classes.Add("dialog-textbox");
 
         // Set focus border color when template is applied
         textBox.TemplateApplied += (s, e) =>
@@ -1877,7 +2059,7 @@ public partial class MainWindow : Window
             BorderBrush = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
             BorderThickness = new Avalonia.Thickness(1),
             CornerRadius = new CornerRadius(4),
-            Width = 440
+            Width = 360
         };
 
         var textBox = new TextBox
@@ -1891,6 +2073,7 @@ public partial class MainWindow : Window
 
         // Set the focus adorner to null to disable purple outline
         textBox.SetValue(Avalonia.Controls.Primitives.TemplatedControl.FocusAdornerProperty, null);
+        textBox.Classes.Add("dialog-textbox");
 
         // Force the inner template border to stay neutral (avoid Fluent purple focus ring).
         textBox.TemplateApplied += (s, e) =>
@@ -3327,6 +3510,31 @@ public partial class MainWindow : Window
 
         var (replaceBorder, replaceTextBox) = CreateDialogTextBox(accentBrush);
 
+        // Add Enter key handler to trigger Replace All
+        void HandleEnterKey(object? s, Avalonia.Input.KeyEventArgs args)
+        {
+            if (args.Key == Avalonia.Input.Key.Enter)
+            {
+                args.Handled = true;
+                if (!string.IsNullOrEmpty(findTextBox.Text))
+                {
+                    var editorText = Editor.Text ?? string.Empty;
+                    var searchText = findTextBox.Text;
+                    var replaceText = replaceTextBox.Text ?? string.Empty;
+
+                    var pattern = @"\b" + System.Text.RegularExpressions.Regex.Escape(searchText) + @"\b";
+                    var newText = System.Text.RegularExpressions.Regex.Replace(editorText, pattern, replaceText);
+
+                    Editor.Text = newText;
+                    Editor.CaretIndex = 0;
+                    dialog.Close();
+                }
+            }
+        }
+
+        findTextBox.KeyDown += HandleEnterKey;
+        replaceTextBox.KeyDown += HandleEnterKey;
+
         // Buttons panel
         var buttonsPanel = new StackPanel
         {
@@ -3775,6 +3983,12 @@ public partial class MainWindow : Window
             ignoreMenuItem.Click += (s, args) =>
             {
                 _spellChecker.AddToCustomDictionary(wordToIgnore);
+
+                // Save to preferences
+                var prefs = LoadPreferences();
+                prefs.CustomDictionary = _spellChecker.GetCustomDictionary();
+                SavePreferencesWithCustomDict(prefs);
+
                 // Update the spell check indicator
                 UpdateSpellCheckIndicator();
             };
@@ -3942,6 +4156,23 @@ public partial class MainWindow : Window
                     }
                 }
             }
+
+            // If there are no root documents, allow dropping into the empty root list by setting index 0 and showing a visual cue
+            if (_dropTargetIndex == -1 && _manuscript.Documents.Count == 0)
+            {
+                var positionInList = e.GetPosition(listBox);
+                var listBounds = new Rect(0, 0, listBox.Bounds.Width, listBox.Bounds.Height);
+
+                if (listBounds.Contains(positionInList))
+                {
+                    _dropTargetIndex = 0;
+
+                    // Show a simple visual cue by tinting the list background with the accent color
+                    var accentBrush = this.FindResource("AccentBrush") as Avalonia.Media.SolidColorBrush
+                                      ?? new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(_accentColor));
+                    listBox.Background = accentBrush;
+                }
+            }
         }
     }
 
@@ -4074,9 +4305,17 @@ public partial class MainWindow : Window
                         // Update active document if needed
                         if (_activeDocument == docToDelete)
                         {
+                            // Find a new document to select
+                            Document? newActiveDoc = null;
+
                             if (_manuscript.Documents.Count > 0)
                             {
-                                _activeDocument = _manuscript.Documents[0];
+                                newActiveDoc = _manuscript.Documents[0];
+                            }
+
+                            if (newActiveDoc != null)
+                            {
+                                _activeDocument = newActiveDoc;
                                 DocumentList.SelectedItem = _activeDocument;
                                 Editor.Text = _activeDocument.Text;
                             }
@@ -4135,6 +4374,24 @@ public partial class MainWindow : Window
             }
         }
 
+        // If this was a simple click (no drag) then select the document we pressed on (covers section documents)
+        if (!_isDragging && _draggedDocument != null)
+        {
+            _activeDocument = _draggedDocument;
+            _manuscript.LastOpenDocumentId = _activeDocument.Id;
+            Editor.Text = _activeDocument.Text;
+            Editor.IsReadOnly = _activeDocument.IsLocked;
+
+            // Clear root list selection unless the selected doc lives there
+            var list = this.FindControl<ListBox>("DocumentList");
+            if (list != null)
+            {
+                list.SelectedItem = _manuscript.Documents.Contains(_activeDocument) ? _activeDocument : null;
+            }
+
+            UpdateSelectedDocumentColor();
+        }
+
         HideAllDropIndicators();
 
         // Reset trash zone background
@@ -4166,6 +4423,16 @@ public partial class MainWindow : Window
                     itemBorder.BorderThickness = DropIndicatorTopThickness;
                 }
             }
+        }
+        // Reset list background if it had been used as an empty-list drop indicator
+        var sidebar = this.FindControl<Border>("SidebarPanel");
+        if (sidebar != null)
+        {
+            listBox.Background = sidebar.Background;
+        }
+        else
+        {
+            listBox.Background = Avalonia.Media.Brushes.Transparent;
         }
     }
 

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("JetJot")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6295d883a83de56e8404410bf72fb2c1e4a4c535")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+7699220f31f41c7a377a1aff1b7c74de535f8fbb")]
 [assembly: System.Reflection.AssemblyProductAttribute("JetJot")]
 [assembly: System.Reflection.AssemblyTitleAttribute("JetJot")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
