@@ -3193,6 +3193,18 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OnMoveToTopClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
+        {
+            int index = _manuscript.Documents.IndexOf(doc);
+            if (index > 0)
+            {
+                _manuscript.Documents.Move(index, 0);
+            }
+        }
+    }
+
     private void OnMoveUpClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
     {
         if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
@@ -3213,6 +3225,18 @@ public partial class MainWindow : Window
             if (index < _manuscript.Documents.Count - 1)
             {
                 _manuscript.Documents.Move(index, index + 1);
+            }
+        }
+    }
+
+    private void OnMoveToBottomClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        if (sender is MenuItem menuItem && menuItem.DataContext is Document doc)
+        {
+            int index = _manuscript.Documents.IndexOf(doc);
+            if (index < _manuscript.Documents.Count - 1)
+            {
+                _manuscript.Documents.Move(index, _manuscript.Documents.Count - 1);
             }
         }
     }

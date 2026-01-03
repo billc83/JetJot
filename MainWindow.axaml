@@ -359,8 +359,10 @@
                                                 <MenuItem Header="Lock" Click="OnLockMenuClicked" IsVisible="{Binding !IsLocked}"/>
                                                 <MenuItem Header="Unlock" Click="OnUnlockMenuClicked" IsVisible="{Binding IsLocked}"/>
                                                 <Separator/>
+                                                <MenuItem Header="Move to Top" Click="OnMoveToTopClicked"/>
                                                 <MenuItem Header="Move Up" Click="OnMoveUpClicked"/>
                                                 <MenuItem Header="Move Down" Click="OnMoveDownClicked"/>
+                                                <MenuItem Header="Move to Bottom" Click="OnMoveToBottomClicked"/>
                                                 <Separator/>
                                                 <MenuItem Header="Delete" Click="OnDeleteMenuClicked"/>
                                             </ContextMenu>
