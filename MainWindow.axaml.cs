@@ -599,6 +599,73 @@ public partial class MainWindow : Window
         }
     }
 
+    private async void OnImportFromJetPlotClicked(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        // Save current manuscript before switching
+        if (!string.IsNullOrEmpty(_manuscript.FolderPath))
+        {
+            _storage.SaveManuscript(_manuscript);
+        }
+
+        var storageProvider = this.StorageProvider;
+
+        // Let user pick a .jetplot file
+        var files = await storageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
+        {
+            Title = "Import JetPlot Project",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new Avalonia.Platform.Storage.FilePickerFileType("JetPlot Files") { Patterns = new[] { "*.jetplot" } },
+                new Avalonia.Platform.Storage.FilePickerFileType("All Files") { Patterns = new[] { "*" } }
+            }
+        });
+
+        if (files.Count == 0)
+            return;
+
+        var jetplotPath = files[0].Path.LocalPath;
+
+        try
+        {
+            var jetJotRoot = System.IO.Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                "JetJot");
+            System.IO.Directory.CreateDirectory(jetJotRoot);
+
+            // Derive output folder name from the project's name in the file
+            var projectName = JetPlotImporter.ReadProjectName(jetplotPath);
+            var folderName = JetPlotImporter.SanitizeFolderName(projectName);
+            var basePath = System.IO.Path.Combine(jetJotRoot, folderName);
+            var outputPath = JetPlotImporter.GetUniqueFolderPath(basePath);
+
+            // Warn user if the name was adjusted to avoid a collision
+            if (outputPath != basePath)
+            {
+                var proceed = await AskYesNoQuestion(
+                    "Project Name Conflict",
+                    $"A project named '{folderName}' already exists in your JetJot folder.\n\n" +
+                    $"Save the import as '{System.IO.Path.GetFileName(outputPath)}' instead?");
+
+                if (!proceed)
+                    return;
+            }
+
+            JetPlotImporter.Import(jetplotPath, outputPath);
+            LoadManuscriptFromFolder(outputPath);
+
+            await ShowErrorDialog(
+                "Import Complete",
+                $"'{projectName}' was imported successfully.\n\n" +
+                "Note: Connections and intensity values were not imported — " +
+                "documents represent the plot nodes, ordered left-to-right by canvas position.");
+        }
+        catch (Exception ex)
+        {
+            await ShowErrorDialog("Import Failed", $"Could not import the JetPlot file:\n{ex.Message}");
+        }
+    }
+
     private void CopyDirectory(string sourceDir, string destDir)
     {
         // Create destination directory
@@ -1572,6 +1639,7 @@ public partial class MainWindow : Window
         {
             var width = preferences.ShowSidebar ? preferences.SidebarWidth : 0;
             mainGrid.ColumnDefinitions[0].Width = new GridLength(width);
+            mainGrid.ColumnDefinitions[0].MinWidth = preferences.ShowSidebar ? 150 : 0;
         }
 
         // Apply footer preference

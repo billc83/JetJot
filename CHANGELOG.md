@@ -12,6 +12,25 @@ Version numbers reflect internal milestones rather than strict semantic versioni
 
 ---
 
+# v1.0.1
+
+Move to Top/Bottom
+
+- Added Move to Top and Move to Bottom functionality in sidebar
+- Added support for MacOS (Apple Silicon) and Linux
+
+---
+
+# v1.0.0
+
+JetJot
+
+- Changed version to 1.0.0 (FULL RELEASE)
+- Added CHANGELOG.md, written and exported in JetJot
+
+
+---
+
 # v0.43
 
 Persistence Improvement

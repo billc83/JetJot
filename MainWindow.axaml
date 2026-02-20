@@ -93,6 +93,7 @@
                     <MenuItem x:Name="FileMenu" Header="File" Foreground="#FFFFFF" SubmenuOpened="OnMenuSubmenuOpened">
                         <MenuItem Header="New Project" Click="OnNewManuscriptMenuClicked" InputGesture="Ctrl+Shift+N"/>
                         <MenuItem Header="Open/Import Project..." Click="OnImportManuscriptClicked" InputGesture="Ctrl+O"/>
+                        <MenuItem Header="Import from JetPlot..." Click="OnImportFromJetPlotClicked"/>
                         <Separator/>
                         <MenuItem Header="New Document" Click="OnNewDocumentClicked" InputGesture="Ctrl+N"/>
                         <Separator/>
