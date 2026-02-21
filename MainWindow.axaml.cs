@@ -690,26 +690,28 @@ public partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task<bool> AskYesNoQuestion(string title, string message)
     {
-        var dialog = new Window
-        {
-            Title = title,
-            Width = 400,
-            Height = 180,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
-        };
+        var dialog = CreateStyledDialog(title, 400, 200);
 
-        var panel = new StackPanel
+        var outerGrid = new Grid { RowDefinitions = new RowDefinitions("35,*") };
+
+        var titleBar = CreateDialogTitleBar(title, dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var contentPanel = new StackPanel
         {
             Margin = new Avalonia.Thickness(20),
-            Spacing = 20
+            Spacing = 16,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
         };
 
         var messageText = new TextBlock
         {
             Text = message,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#EAEAEA")),
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            TextAlignment = Avalonia.Media.TextAlignment.Center,
+            FontSize = 13
         };
 
         var buttonPanel = new StackPanel
@@ -721,35 +723,38 @@ public partial class MainWindow : Window
 
         bool result = false;
 
-        var yesBtn = new Button
-        {
-            Content = "Yes",
-            Width = 80
-        };
-        yesBtn.Click += (s, args) =>
-        {
-            result = true;
-            dialog.Close();
-        };
+        var yesBtn = CreateAccentButton("Yes", 80);
+        yesBtn.Click += (s, args) => { result = true; dialog.Close(); };
 
         var noBtn = new Button
         {
             Content = "No",
-            Width = 80
+            Width = 80,
+            Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#3A3A3A")),
+            Foreground = Avalonia.Media.Brushes.White,
+            BorderThickness = new Avalonia.Thickness(0),
+            CornerRadius = new CornerRadius(4),
+            Padding = new Avalonia.Thickness(12, 6)
         };
-        noBtn.Click += (s, args) =>
-        {
-            result = false;
-            dialog.Close();
-        };
+        noBtn.Click += (s, args) => { result = false; dialog.Close(); };
 
         buttonPanel.Children.Add(yesBtn);
         buttonPanel.Children.Add(noBtn);
 
-        panel.Children.Add(messageText);
-        panel.Children.Add(buttonPanel);
+        contentPanel.Children.Add(messageText);
+        contentPanel.Children.Add(buttonPanel);
 
-        dialog.Content = panel;
+        Grid.SetRow(contentPanel, 1);
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(contentPanel);
+
+        dialog.Content = outerGrid;
+
+        dialog.KeyDown += (s, e) =>
+        {
+            if (e.Key == Key.Escape) { result = false; dialog.Close(); }
+            else if (e.Key == Key.Enter) { result = true; dialog.Close(); }
+        };
 
         await dialog.ShowDialog(this);
         return result;
@@ -889,43 +894,49 @@ public partial class MainWindow : Window
 
     private async System.Threading.Tasks.Task ShowErrorDialog(string title, string message)
     {
-        var errorDialog = new Window
-        {
-            Title = title,
-            Width = 400,
-            Height = 180,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            CanResize = false
-        };
+        var dialog = CreateStyledDialog(title, 440, 240);
 
-        var errorPanel = new StackPanel
+        var outerGrid = new Grid { RowDefinitions = new RowDefinitions("35,*") };
+
+        var titleBar = CreateDialogTitleBar(title, dialog);
+        Grid.SetRow(titleBar, 0);
+
+        var contentPanel = new StackPanel
         {
             Margin = new Avalonia.Thickness(20),
-            Spacing = 20
+            Spacing = 16,
+            VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
         };
 
-        var errorText = new TextBlock
+        var messageText = new TextBlock
         {
             Text = message,
+            Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse("#EAEAEA")),
             TextWrapping = Avalonia.Media.TextWrapping.Wrap,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+            TextAlignment = Avalonia.Media.TextAlignment.Center,
+            FontSize = 13
         };
 
-        var okBtn = new Button
+        var okBtn = CreateAccentButton("OK", 80);
+        okBtn.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+        okBtn.Click += (s, args) => dialog.Close();
+
+        contentPanel.Children.Add(messageText);
+        contentPanel.Children.Add(okBtn);
+
+        Grid.SetRow(contentPanel, 1);
+        outerGrid.Children.Add(titleBar);
+        outerGrid.Children.Add(contentPanel);
+
+        dialog.Content = outerGrid;
+
+        dialog.KeyDown += (s, e) =>
         {
-            Content = "OK",
-            Width = 80,
-            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+            if (e.Key == Key.Escape || e.Key == Key.Enter) dialog.Close();
         };
 
-        okBtn.Click += (s, args) => errorDialog.Close();
-
-        errorPanel.Children.Add(errorText);
-        errorPanel.Children.Add(okBtn);
-
-        errorDialog.Content = errorPanel;
-
-        await errorDialog.ShowDialog(this);
+        await dialog.ShowDialog(this);
     }
 
     private void RemoveFromRecents(string folderPath)
@@ -1024,8 +1035,8 @@ public partial class MainWindow : Window
         var recents = LoadRecents();
         if (recents.Recents.Count > 0)
         {
-            // Find position (after "Open Manuscript...")
-            int insertIndex = 2;
+            // Find position (after "Open Manuscript..." and "Import from JetPlot...")
+            int insertIndex = 3;
 
             // Add separator
             var separator = new Separator { Tag = "RecentSeparator" };
@@ -2862,7 +2873,8 @@ public partial class MainWindow : Window
         var textBox = new TextBox
         {
             Text = _manuscript.Name,
-            Margin = new Avalonia.Thickness(0, 0, 0, 20)
+            Margin = new Avalonia.Thickness(0, 0, 0, 20),
+            MaxLength = 100
         };
 
         ApplyAccentToTextBox(textBox);
@@ -2887,41 +2899,55 @@ public partial class MainWindow : Window
             Padding = new Avalonia.Thickness(12, 6)
         };
 
-        okButton.Click += (s, e) =>
+        okButton.Click += async (s, e) =>
         {
             if (!string.IsNullOrWhiteSpace(textBox.Text))
             {
-                var oldFolderPath = _manuscript.FolderPath;
-                var newName = textBox.Text;
-                _manuscript.Name = newName;
+                // Strip characters that are invalid in folder names
+                var invalidChars = System.IO.Path.GetInvalidFileNameChars();
+                var sanitized = string.Concat(textBox.Text.Select(c => invalidChars.Contains(c) ? '_' : c)).Trim();
 
-                // Update folder path to match new manuscript name
+                if (string.IsNullOrWhiteSpace(sanitized))
+                {
+                    await ShowErrorDialog("Invalid Name", "The project name contains only invalid characters. Please choose a different name.");
+                    return;
+                }
+
+                var oldFolderPath = _manuscript.FolderPath;
+                _manuscript.Name = sanitized;
+
                 var jetJotRoot = System.IO.Path.Combine(
                     Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                     "JetJot");
-                var newFolderPath = System.IO.Path.Combine(jetJotRoot, newName);
+                var newFolderPath = System.IO.Path.Combine(jetJotRoot, sanitized);
 
-                // Rename the folder if it exists and the name changed
-                if (System.IO.Directory.Exists(oldFolderPath) && oldFolderPath != newFolderPath)
+                try
                 {
-                    // Save current state to old location first
-                    _storage.SaveManuscript(_manuscript);
-
-                    // Move to new folder
-                    if (System.IO.Directory.Exists(newFolderPath))
+                    if (System.IO.Directory.Exists(oldFolderPath) && oldFolderPath != newFolderPath)
                     {
-                        // If target exists, just update the path without moving
-                        _manuscript.FolderPath = newFolderPath;
+                        _storage.SaveManuscript(_manuscript);
+
+                        if (System.IO.Directory.Exists(newFolderPath))
+                        {
+                            _manuscript.FolderPath = newFolderPath;
+                        }
+                        else
+                        {
+                            System.IO.Directory.Move(oldFolderPath, newFolderPath);
+                            _manuscript.FolderPath = newFolderPath;
+                        }
                     }
                     else
                     {
-                        System.IO.Directory.Move(oldFolderPath, newFolderPath);
                         _manuscript.FolderPath = newFolderPath;
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    _manuscript.FolderPath = newFolderPath;
+                    _manuscript.Name = System.IO.Path.GetFileName(oldFolderPath) ?? _manuscript.Name;
+                    _manuscript.FolderPath = oldFolderPath;
+                    await ShowErrorDialog("Rename Failed", $"Could not rename the project folder:\n{ex.Message}");
+                    return;
                 }
             }
             dialog.Close();
